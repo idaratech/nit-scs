@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm build:shared
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type-check backend
+        run: pnpm build:backend
+
+      - name: Type-check frontend
+        run: pnpm --filter @nit-scs/frontend exec tsc -b --noEmit
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build frontend
+        run: pnpm build:frontend

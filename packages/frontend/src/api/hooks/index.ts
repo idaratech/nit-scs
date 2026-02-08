@@ -13,3 +13,60 @@ export * from './usePermissions';
 export * from './useTasks';
 export * from './useDocuments';
 export * from './useReports';
+
+// Document-specific hooks: only re-export status-transition hooks
+// (basic CRUD is already exported from useMasterData via factory)
+export {
+  useJobOrderList,
+  useSubmitJobOrder,
+  useApproveJobOrder,
+  useRejectJobOrder,
+  useAssignJobOrder,
+  useStartJobOrder,
+  useHoldJobOrder,
+  useResumeJobOrder,
+  useCompleteJobOrder,
+  useInvoiceJobOrder,
+  useCancelJobOrder,
+} from './useJobOrders';
+
+export { useSubmitMrrv, useApproveQcMrrv, useReceiveMrrv, useStoreMrrv } from './useMrrv';
+export { useSubmitMirv, useApproveMirv, useIssueMirv, useCancelMirv } from './useMirv';
+export { useSubmitMrv, useReceiveMrv, useCompleteMrv } from './useMrv';
+export { useStartRfim, useCompleteRfim } from './useRfim';
+export { useSendClaimOsd, useResolveOsd } from './useOsd';
+export {
+  useSubmitMrf,
+  useReviewMrf,
+  useApproveMrf,
+  useCheckStockMrf,
+  useConvertMirvMrf,
+  useFulfillMrf,
+  useRejectMrf,
+  useCancelMrf,
+} from './useMrf';
+export {
+  useShipmentList,
+  useUpdateShipmentStatus,
+  useAddCustomsStage,
+  useUpdateCustomsStage,
+  useDeliverShipment,
+  useCancelShipment,
+} from './useShipments';
+export {
+  useGatePassList,
+  useSubmitGatePass,
+  useApproveGatePass,
+  useReleaseGatePass,
+  useReturnGatePass,
+  useCancelGatePass,
+} from './useGatePasses';
+export {
+  useStockTransferList,
+  useSubmitStockTransfer,
+  useApproveStockTransfer,
+  useShipStockTransfer,
+  useReceiveStockTransfer,
+  useCompleteStockTransfer,
+  useCancelStockTransfer,
+} from './useStockTransfers';

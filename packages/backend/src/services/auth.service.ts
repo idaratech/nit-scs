@@ -1,6 +1,8 @@
+import crypto from 'crypto';
 import { prisma } from '../utils/prisma.js';
 import { comparePassword, hashPassword } from '../utils/password.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken, type JwtPayload } from '../utils/jwt.js';
+import { AuthenticationError, NotFoundError, RateLimitError, BusinessRuleError } from '@nit-scs/shared';
 
 export interface LoginResult {
   user: {
@@ -18,16 +20,16 @@ export interface LoginResult {
 export async function login(email: string, password: string): Promise<LoginResult> {
   const employee = await prisma.employee.findUnique({ where: { email } });
   if (!employee || !employee.passwordHash) {
-    throw new Error('Invalid email or password');
+    throw new AuthenticationError('Invalid email or password');
   }
 
   if (!employee.isActive) {
-    throw new Error('Account is deactivated');
+    throw new AuthenticationError('Account is deactivated');
   }
 
   const valid = await comparePassword(password, employee.passwordHash);
   if (!valid) {
-    throw new Error('Invalid email or password');
+    throw new AuthenticationError('Invalid email or password');
   }
 
   const payload: JwtPayload = {
@@ -66,7 +68,7 @@ export async function refreshTokens(token: string): Promise<{ accessToken: strin
   // Verify user still exists and is active
   const employee = await prisma.employee.findUnique({ where: { id: payload.userId } });
   if (!employee || !employee.isActive) {
-    throw new Error('User not found or deactivated');
+    throw new AuthenticationError('User not found or deactivated');
   }
 
   const newPayload: JwtPayload = {
@@ -85,12 +87,12 @@ export async function refreshTokens(token: string): Promise<{ accessToken: strin
 export async function changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
   const employee = await prisma.employee.findUnique({ where: { id: userId } });
   if (!employee || !employee.passwordHash) {
-    throw new Error('User not found');
+    throw new NotFoundError('User');
   }
 
   const valid = await comparePassword(currentPassword, employee.passwordHash);
   if (!valid) {
-    throw new Error('Current password is incorrect');
+    throw new BusinessRuleError('Current password is incorrect');
   }
 
   const newHash = await hashPassword(newPassword);
@@ -102,39 +104,59 @@ export async function changePassword(userId: string, currentPassword: string, ne
 
 // ── Forgot / Reset Password ─────────────────────────────────────────────
 
-const resetCodes = new Map<string, { code: string; expiresAt: Date }>();
+const MAX_RESET_CODES_PER_HOUR = 3;
 
 export async function forgotPassword(email: string): Promise<void> {
   const employee = await prisma.employee.findUnique({ where: { email } });
 
   // Generate code regardless (don't reveal user existence)
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const code = String(crypto.randomInt(100000, 999999));
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
   if (employee) {
-    resetCodes.set(email.toLowerCase(), { code, expiresAt });
-    console.log(`[RESET CODE] ${email}: ${code}`);
+    // Rate limit: max 3 reset codes per email per hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentCount = await prisma.passwordResetCode.count({
+      where: {
+        email: email.toLowerCase(),
+        createdAt: { gte: oneHourAgo },
+      },
+    });
+
+    if (recentCount >= MAX_RESET_CODES_PER_HOUR) {
+      throw new RateLimitError('Too many reset code requests. Please try again later.');
+    }
+
+    // Store in database
+    await prisma.passwordResetCode.create({
+      data: {
+        email: email.toLowerCase(),
+        code,
+        expiresAt,
+      },
+    });
+
+    // TODO: send email with code — for now it's only stored in DB
   }
 }
 
 export async function resetPassword(email: string, code: string, newPassword: string): Promise<void> {
-  const entry = resetCodes.get(email.toLowerCase());
+  const entry = await prisma.passwordResetCode.findFirst({
+    where: {
+      email: email.toLowerCase(),
+      code,
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
   if (!entry) {
-    throw new Error('Invalid or expired reset code');
-  }
-
-  if (entry.code !== code) {
-    throw new Error('Invalid or expired reset code');
-  }
-
-  if (new Date() > entry.expiresAt) {
-    resetCodes.delete(email.toLowerCase());
-    throw new Error('Invalid or expired reset code');
+    throw new BusinessRuleError('Invalid or expired reset code');
   }
 
   const employee = await prisma.employee.findUnique({ where: { email } });
   if (!employee) {
-    throw new Error('Invalid or expired reset code');
+    throw new BusinessRuleError('Invalid or expired reset code');
   }
 
   const newHash = await hashPassword(newPassword);
@@ -143,7 +165,10 @@ export async function resetPassword(email: string, code: string, newPassword: st
     data: { passwordHash: newHash },
   });
 
-  resetCodes.delete(email.toLowerCase());
+  // Clean up all reset codes for this email
+  await prisma.passwordResetCode.deleteMany({
+    where: { email: email.toLowerCase() },
+  });
 }
 
 export async function getMe(userId: string) {
@@ -162,6 +187,6 @@ export async function getMe(userId: string) {
       isActive: true,
     },
   });
-  if (!employee) throw new Error('User not found');
+  if (!employee) throw new NotFoundError('User');
   return employee;
 }

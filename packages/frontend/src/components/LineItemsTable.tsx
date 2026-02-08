@@ -1,9 +1,12 @@
-
 import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, Search, AlertTriangle } from 'lucide-react';
 import type { VoucherLineItem, MaterialCatalogItem } from '@nit-scs/shared/types';
 import { useItems, useUoms } from '@/api/hooks/useMasterData';
-import { useInventoryStore } from '@/store/useInventoryStore';
+// TODO: Replace with real inventory API query when backend inventory levels endpoint is ready
+const _stubInventory = {
+  getAvailableQty: (_code: string) => 0,
+  getStockStatus: (_code: string) => 'Out of Stock' as const,
+};
 
 interface LineItemsTableProps {
   items: VoucherLineItem[];
@@ -18,35 +21,39 @@ export const LineItemsTable: React.FC<LineItemsTableProps> = ({
   onItemsChange,
   showCondition = false,
   showStockAvailability = false,
-  readOnly = false
+  readOnly = false,
 }) => {
-  const { getAvailableQty, getStockStatus } = useInventoryStore();
+  const { getAvailableQty, getStockStatus } = _stubInventory;
 
   // React Query hooks for master data
   const itemsQuery = useItems({ pageSize: 500 });
   const MATERIAL_CATALOG = (itemsQuery.data?.data ?? []) as Array<Record<string, unknown>>;
   const uomsQuery = useUoms({ pageSize: 100 });
-  const UNIT_OPTIONS = (uomsQuery.data?.data ?? []).map((u: Record<string, unknown>) => (u.name as string) || (u.symbol as string) || '');
+  const UNIT_OPTIONS = (uomsQuery.data?.data ?? []).map(
+    (u: Record<string, unknown>) => (u.name as string) || (u.symbol as string) || '',
+  );
 
   const [searchTerm, setSearchTerm] = useState('');
   const [showCatalog, setShowCatalog] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const categories = useMemo(() =>
-    ['All', ...new Set(MATERIAL_CATALOG.map((m: any) => m.category))],
-    [MATERIAL_CATALOG]
+  const categories = useMemo(
+    () => ['All', ...new Set(MATERIAL_CATALOG.map((m: any) => m.category))],
+    [MATERIAL_CATALOG],
   );
 
-  const filteredCatalog = useMemo(() =>
-    MATERIAL_CATALOG.filter((m: any) => {
-      const matchSearch = searchTerm === '' ||
-        m.nameAr.includes(searchTerm) ||
-        m.nameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        m.code.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchCategory = selectedCategory === 'All' || m.category === selectedCategory;
-      return matchSearch && matchCategory;
-    }),
-    [MATERIAL_CATALOG, searchTerm, selectedCategory]
+  const filteredCatalog = useMemo(
+    () =>
+      MATERIAL_CATALOG.filter((m: any) => {
+        const matchSearch =
+          searchTerm === '' ||
+          m.nameAr.includes(searchTerm) ||
+          m.nameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          m.code.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchCategory = selectedCategory === 'All' || m.category === selectedCategory;
+        return matchSearch && matchCategory;
+      }),
+    [MATERIAL_CATALOG, searchTerm, selectedCategory],
   );
 
   const addItemFromCatalog = (catalogItem: MaterialCatalogItem) => {
@@ -55,7 +62,7 @@ export const LineItemsTable: React.FC<LineItemsTableProps> = ({
       const updated = items.map(i =>
         i.itemCode === catalogItem.code
           ? { ...i, quantity: i.quantity + 1, totalPrice: (i.quantity + 1) * i.unitPrice }
-          : i
+          : i,
       );
       onItemsChange(updated);
     } else {
@@ -98,18 +105,16 @@ export const LineItemsTable: React.FC<LineItemsTableProps> = ({
       if (item.id !== id) return item;
       const patched = { ...item, [field]: value };
       if (field === 'quantity' || field === 'unitPrice') {
-        patched.totalPrice = (field === 'quantity' ? Number(value) : patched.quantity) *
-                             (field === 'unitPrice' ? Number(value) : patched.unitPrice);
+        patched.totalPrice =
+          (field === 'quantity' ? Number(value) : patched.quantity) *
+          (field === 'unitPrice' ? Number(value) : patched.unitPrice);
       }
       return patched;
     });
     onItemsChange(updated);
   };
 
-  const totalValue = useMemo(() =>
-    items.reduce((sum, item) => sum + item.totalPrice, 0),
-    [items]
-  );
+  const totalValue = useMemo(() => items.reduce((sum, item) => sum + item.totalPrice, 0), [items]);
 
   return (
     <div className="space-y-4">
@@ -118,7 +123,9 @@ export const LineItemsTable: React.FC<LineItemsTableProps> = ({
         <h3 className="text-lg font-bold text-white flex items-center gap-3">
           <span className="w-1 h-6 bg-nesma-secondary rounded-full shadow-[0_0_8px_rgba(128,209,233,0.6)]"></span>
           Items
-          <span className="text-sm font-normal text-gray-400">({items.length} {items.length === 1 ? 'item' : 'items'})</span>
+          <span className="text-sm font-normal text-gray-400">
+            ({items.length} {items.length === 1 ? 'item' : 'items'})
+          </span>
         </h3>
         {!readOnly && (
           <div className="flex gap-2">
@@ -152,18 +159,20 @@ export const LineItemsTable: React.FC<LineItemsTableProps> = ({
                 type="text"
                 placeholder="Search items..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={e => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-black/30 border border-white/10 rounded-lg text-white text-sm focus:border-nesma-secondary outline-none"
                 autoFocus
               />
             </div>
             <select
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={e => setSelectedCategory(e.target.value)}
               className="px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm focus:border-nesma-secondary outline-none"
             >
               {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
               ))}
             </select>
           </div>
@@ -186,15 +195,15 @@ export const LineItemsTable: React.FC<LineItemsTableProps> = ({
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-sm text-nesma-secondary font-medium">{item.unitPrice?.toLocaleString()} SAR</span>
+                  <span className="text-sm text-nesma-secondary font-medium">
+                    {item.unitPrice?.toLocaleString()} SAR
+                  </span>
                   <span className="text-xs text-gray-500 block">/{item.unit}</span>
                 </div>
               </button>
             ))}
             {filteredCatalog.length === 0 && (
-              <div className="text-center py-6 text-gray-500 text-sm">
-                No results found
-              </div>
+              <div className="text-center py-6 text-gray-500 text-sm">No results found</div>
             )}
           </div>
         </div>
@@ -229,7 +238,7 @@ export const LineItemsTable: React.FC<LineItemsTableProps> = ({
                       <input
                         type="text"
                         value={item.itemCode}
-                        onChange={(e) => updateItem(item.id, 'itemCode', e.target.value)}
+                        onChange={e => updateItem(item.id, 'itemCode', e.target.value)}
                         className="w-24 px-2 py-1.5 bg-black/20 border border-white/10 rounded-lg text-white text-xs font-mono focus:border-nesma-secondary outline-none"
                         placeholder="CODE"
                       />
@@ -242,7 +251,7 @@ export const LineItemsTable: React.FC<LineItemsTableProps> = ({
                       <input
                         type="text"
                         value={item.itemName}
-                        onChange={(e) => updateItem(item.id, 'itemName', e.target.value)}
+                        onChange={e => updateItem(item.id, 'itemName', e.target.value)}
                         className="w-full px-2 py-1.5 bg-black/20 border border-white/10 rounded-lg text-white text-sm focus:border-nesma-secondary outline-none"
                         placeholder="Item name"
                       />
@@ -254,10 +263,14 @@ export const LineItemsTable: React.FC<LineItemsTableProps> = ({
                     ) : (
                       <select
                         value={item.unit}
-                        onChange={(e) => updateItem(item.id, 'unit', e.target.value)}
+                        onChange={e => updateItem(item.id, 'unit', e.target.value)}
                         className="px-2 py-1.5 bg-black/20 border border-white/10 rounded-lg text-white text-xs focus:border-nesma-secondary outline-none"
                       >
-                        {UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
+                        {UNIT_OPTIONS.map(u => (
+                          <option key={u} value={u}>
+                            {u}
+                          </option>
+                        ))}
                       </select>
                     )}
                   </td>
@@ -270,7 +283,7 @@ export const LineItemsTable: React.FC<LineItemsTableProps> = ({
                         min="0"
                         step="0.01"
                         value={item.quantity}
-                        onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))}
+                        onChange={e => updateItem(item.id, 'quantity', Number(e.target.value))}
                         className="w-20 px-2 py-1.5 bg-black/20 border border-white/10 rounded-lg text-white text-sm text-center focus:border-nesma-secondary outline-none"
                       />
                     )}
@@ -284,7 +297,7 @@ export const LineItemsTable: React.FC<LineItemsTableProps> = ({
                         min="0"
                         step="0.01"
                         value={item.unitPrice}
-                        onChange={(e) => updateItem(item.id, 'unitPrice', Number(e.target.value))}
+                        onChange={e => updateItem(item.id, 'unitPrice', Number(e.target.value))}
                         className="w-24 px-2 py-1.5 bg-black/20 border border-white/10 rounded-lg text-white text-sm text-center focus:border-nesma-secondary outline-none"
                       />
                     )}
@@ -296,38 +309,51 @@ export const LineItemsTable: React.FC<LineItemsTableProps> = ({
                   </td>
                   {showStockAvailability && (
                     <td className="py-3 px-2 text-center">
-                      {item.itemCode ? (() => {
-                        const available = getAvailableQty(item.itemCode);
-                        const status = getStockStatus(item.itemCode);
-                        const isInsufficient = item.quantity > available;
-                        return (
-                          <div className="flex flex-col items-center gap-0.5">
-                            <span className={`text-xs font-medium ${isInsufficient ? 'text-red-400' : status === 'Out of Stock' ? 'text-red-400' : status === 'Low Stock' ? 'text-amber-400' : 'text-emerald-400'}`}>
-                              {available}
-                            </span>
-                            {isInsufficient && (
-                              <span className="flex items-center gap-1 text-[10px] text-red-400">
-                                <AlertTriangle size={10} /> Insufficient
+                      {item.itemCode ? (
+                        (() => {
+                          const available = getAvailableQty(item.itemCode);
+                          const status = getStockStatus(item.itemCode);
+                          const isInsufficient = item.quantity > available;
+                          return (
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span
+                                className={`text-xs font-medium ${isInsufficient ? 'text-red-400' : status === 'Out of Stock' ? 'text-red-400' : status === 'Low Stock' ? 'text-amber-400' : 'text-emerald-400'}`}
+                              >
+                                {available}
                               </span>
-                            )}
-                          </div>
-                        );
-                      })() : <span className="text-xs text-gray-600">--</span>}
+                              {isInsufficient && (
+                                <span className="flex items-center gap-1 text-[10px] text-red-400">
+                                  <AlertTriangle size={10} /> Insufficient
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        <span className="text-xs text-gray-600">--</span>
+                      )}
                     </td>
                   )}
                   {showCondition && (
                     <td className="py-3 px-2">
                       {readOnly ? (
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          item.condition === 'New' ? 'bg-green-500/10 text-green-400' :
-                          item.condition === 'Good' ? 'bg-blue-500/10 text-blue-400' :
-                          item.condition === 'Fair' ? 'bg-yellow-500/10 text-yellow-400' :
-                          'bg-red-500/10 text-red-400'
-                        }`}>{item.condition}</span>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full ${
+                            item.condition === 'New'
+                              ? 'bg-green-500/10 text-green-400'
+                              : item.condition === 'Good'
+                                ? 'bg-blue-500/10 text-blue-400'
+                                : item.condition === 'Fair'
+                                  ? 'bg-yellow-500/10 text-yellow-400'
+                                  : 'bg-red-500/10 text-red-400'
+                          }`}
+                        >
+                          {item.condition}
+                        </span>
                       ) : (
                         <select
                           value={item.condition || 'New'}
-                          onChange={(e) => updateItem(item.id, 'condition', e.target.value)}
+                          onChange={e => updateItem(item.id, 'condition', e.target.value)}
                           className="px-2 py-1.5 bg-black/20 border border-white/10 rounded-lg text-white text-xs focus:border-nesma-secondary outline-none"
                         >
                           <option value="New">New</option>
@@ -362,7 +388,10 @@ export const LineItemsTable: React.FC<LineItemsTableProps> = ({
               </div>
               <div className="h-6 w-px bg-white/10"></div>
               <div className="text-sm text-gray-400">
-                Total Qty: <span className="text-white font-medium">{items.reduce((s, i) => s + i.quantity, 0).toLocaleString()}</span>
+                Total Qty:{' '}
+                <span className="text-white font-medium">
+                  {items.reduce((s, i) => s + i.quantity, 0).toLocaleString()}
+                </span>
               </div>
               <div className="h-6 w-px bg-white/10"></div>
               <div className="text-sm">

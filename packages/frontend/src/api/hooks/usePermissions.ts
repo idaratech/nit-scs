@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../client';
-
-interface ApiResponse<T> { success: boolean; data: T }
+import type { ApiResponse } from '../types';
 
 /** GET /api/permissions — returns custom overrides (or {} for defaults) */
 export function usePermissions() {

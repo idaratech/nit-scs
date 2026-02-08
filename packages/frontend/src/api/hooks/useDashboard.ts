@@ -55,11 +55,7 @@ export interface TopProject {
   pendingMirv: number;
 }
 
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  message?: string;
-}
+import type { ApiResponse } from '../types';
 
 // ── Hooks ──────────────────────────────────────────────────────────────────
 

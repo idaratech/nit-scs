@@ -8,7 +8,9 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
+import { logger } from './config/logger.js';
 import { getCorsOptions } from './config/cors.js';
+import { getEnv } from './config/env.js';
 import { requestId } from './middleware/request-id.js';
 import { rateLimiter } from './middleware/rate-limiter.js';
 import { errorHandler } from './middleware/error-handler.js';
@@ -32,6 +34,9 @@ import companyDocumentRoutes from './routes/company-document.routes.js';
 import reportsRoutes from './routes/reports.routes.js';
 
 dotenv.config({ path: '../../.env' });
+
+// Validate environment on startup (throws in production if vars missing)
+getEnv();
 
 const app = express();
 const httpServer = createServer(app);
@@ -97,15 +102,28 @@ if (process.env.NODE_ENV === 'production') {
 const PORT = parseInt(process.env.PORT || '4000', 10);
 
 httpServer.listen(PORT, () => {
-  console.log(`
-  ╔══════════════════════════════════════════════╗
-  ║  NIT Logistics Backend Server                  ║
-  ║  Port: ${PORT}                                   ║
-  ║  Environment: ${(process.env.NODE_ENV || 'development').padEnd(12)}            ║
-  ║  Health: http://localhost:${PORT}/api/health      ║
-  ║  Auth:   http://localhost:${PORT}/api/auth/login  ║
-  ╚══════════════════════════════════════════════╝
-  `);
+  logger.info({ port: PORT, env: process.env.NODE_ENV || 'development' }, 'NIT Logistics Backend Server started');
 });
+
+// ── Graceful Shutdown ────────────────────────────────────────────────
+async function shutdown(signal: string) {
+  logger.info(`${signal} received — shutting down gracefully...`);
+  io.close();
+  httpServer.close(() => {
+    logger.info('HTTP server closed');
+    // Prisma disconnect is imported lazily to avoid circular deps
+    import('./utils/prisma.js').then(({ prisma }) => {
+      prisma.$disconnect().then(() => {
+        logger.info('Database disconnected');
+        process.exit(0);
+      });
+    });
+  });
+  // Force exit after 10s if graceful shutdown hangs
+  setTimeout(() => process.exit(1), 10_000);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 export { app, io, httpServer };

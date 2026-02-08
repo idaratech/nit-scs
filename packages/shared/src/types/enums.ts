@@ -1,14 +1,14 @@
 // ── Enums ─────────────────────────────────────────────────────────────────
 
 export enum UserRole {
-  ADMIN = 'Admin',
-  WAREHOUSE = 'Warehouse Staff',
-  TRANSPORT = 'Transport Staff',
-  ENGINEER = 'Engineer',
-  MANAGER = 'Manager',
-  LOGISTICS_COORDINATOR = 'Logistics Coordinator',
-  QC_OFFICER = 'QC Officer',
-  SITE_ENGINEER = 'Site Engineer',
+  ADMIN = 'admin',
+  MANAGER = 'manager',
+  WAREHOUSE_SUPERVISOR = 'warehouse_supervisor',
+  WAREHOUSE_STAFF = 'warehouse_staff',
+  LOGISTICS_COORDINATOR = 'logistics_coordinator',
+  SITE_ENGINEER = 'site_engineer',
+  QC_OFFICER = 'qc_officer',
+  FREIGHT_FORWARDER = 'freight_forwarder',
 }
 
 export enum JobStatus {

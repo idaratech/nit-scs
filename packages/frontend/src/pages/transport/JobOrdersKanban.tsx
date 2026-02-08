@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   DndContext,
   DragOverlay,
@@ -22,17 +23,7 @@ import {
 import { JobStatus } from '@nit-scs/shared/types';
 import type { JobOrder } from '@nit-scs/shared/types';
 import { toast } from '@/components/Toaster';
-import {
-  Truck,
-  User,
-  MoreHorizontal,
-  Plus,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  MapPin,
-  Search,
-} from 'lucide-react';
+import { Truck, User, MoreHorizontal, Plus, AlertCircle, CheckCircle, XCircle, MapPin, Search } from 'lucide-react';
 
 // ── Backend → Kanban column mapping ──────────────────────────────────────────
 
@@ -122,11 +113,7 @@ const JobCard: React.FC<{ job: JobOrder; borderColor: string; isDragOverlay?: bo
       {/* Priority Stripe */}
       <div
         className={`absolute left-0 top-0 bottom-0 w-1 ${
-          job.priority === 'High'
-            ? 'bg-red-500'
-            : job.priority === 'Medium'
-              ? 'bg-orange-500'
-              : 'bg-emerald-500'
+          job.priority === 'High' ? 'bg-red-500' : job.priority === 'Medium' ? 'bg-orange-500' : 'bg-emerald-500'
         }`}
       ></div>
 
@@ -209,7 +196,7 @@ const KanbanColumn: React.FC<{
 
       {/* Drop Zone Area */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
-        {jobs.map((job) => (
+        {jobs.map(job => (
           <JobCard key={job.id} job={job} borderColor={borderColor} />
         ))}
 
@@ -228,14 +215,18 @@ const KanbanColumn: React.FC<{
 // ── Main Kanban Board ───────────────────────────────────────────────────────
 
 export const JobOrdersKanban: React.FC = () => {
+  const navigate = useNavigate();
   const joQuery = useJobOrderList({ pageSize: 200 });
   const joData = (joQuery.data?.data ?? []) as JobOrder[];
 
   // Track the real backend status for each job (keyed by job id)
   const backendStatusMap = useRef<Record<string, string>>({});
+  // Track the data version to detect when API data changes
+  const lastSyncRef = useRef<string>('');
 
   const [jobs, setJobs] = useState<JobOrder[]>([]);
   const [activeJob, setActiveJob] = useState<JobOrder | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Transition mutations
   const startMutation = useStartJobOrder();
@@ -244,16 +235,21 @@ export const JobOrdersKanban: React.FC = () => {
   const resumeMutation = useResumeJobOrder();
 
   // Sync API data into local state — map backend status to Kanban columns
+  // Re-sync whenever joData changes (new data from API / Socket.IO invalidation)
   useEffect(() => {
-    if (joData.length > 0 && jobs.length === 0) {
-      const mapped = joData.map((jo) => {
-        const rawStatus = (jo as unknown as { status: string }).status ?? 'draft';
-        backendStatusMap.current[jo.id] = rawStatus;
-        return { ...jo, status: backendStatusToColumn(rawStatus) };
-      });
-      setJobs(mapped);
-    }
-  }, [joData, jobs.length]);
+    if (joData.length === 0) return;
+    // Build a fingerprint to detect actual data changes
+    const fingerprint = joData.map(jo => `${jo.id}:${(jo as unknown as { status: string }).status}`).join(',');
+    if (fingerprint === lastSyncRef.current) return;
+    lastSyncRef.current = fingerprint;
+
+    const mapped = joData.map(jo => {
+      const rawStatus = (jo as unknown as { status: string }).status ?? 'draft';
+      backendStatusMap.current[jo.id] = rawStatus;
+      return { ...jo, status: backendStatusToColumn(rawStatus) };
+    });
+    setJobs(mapped);
+  }, [joData]);
 
   // dnd-kit sensors: pointer (mouse/touch) + keyboard for accessibility
   const sensors = useSensors(
@@ -262,89 +258,104 @@ export const JobOrdersKanban: React.FC = () => {
   );
 
   const handleDragStart = (event: DragStartEvent) => {
-    const job = jobs.find((j) => j.id === event.active.id);
+    const job = jobs.find(j => j.id === event.active.id);
     setActiveJob(job ?? null);
   };
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveJob(null);
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      setActiveJob(null);
 
-    if (!over) return;
+      if (!over) return;
 
-    const jobId = active.id as string;
-    const targetColumn = over.id as JobStatus;
-    const currentBackendStatus = backendStatusMap.current[jobId];
+      const jobId = active.id as string;
+      const targetColumn = over.id as JobStatus;
+      const currentBackendStatus = backendStatusMap.current[jobId];
 
-    if (!currentBackendStatus) return;
+      if (!currentBackendStatus) return;
 
-    // If dropping in the same column, do nothing
-    if (backendStatusToColumn(currentBackendStatus) === targetColumn) return;
+      // If dropping in the same column, do nothing
+      if (backendStatusToColumn(currentBackendStatus) === targetColumn) return;
 
-    const transition = resolveTransition(currentBackendStatus, targetColumn);
+      const transition = resolveTransition(currentBackendStatus, targetColumn);
 
-    if (!transition.valid) {
-      toast.warning('Invalid transition', transition.reason);
-      return;
-    }
+      if (!transition.valid) {
+        toast.warning('Invalid transition', transition.reason);
+        return;
+      }
 
-    // Optimistic update — move the card immediately
-    const previousStatus = backendStatusToColumn(currentBackendStatus);
-    setJobs((prev) =>
-      prev.map((job) => (job.id === jobId ? { ...job, status: targetColumn } : job)),
+      // Optimistic update — move the card immediately
+      const previousStatus = backendStatusToColumn(currentBackendStatus);
+      setJobs(prev => prev.map(job => (job.id === jobId ? { ...job, status: targetColumn } : job)));
+
+      const revert = () => {
+        setJobs(prev => prev.map(job => (job.id === jobId ? { ...job, status: previousStatus } : job)));
+      };
+
+      const onSuccess = (newBackendStatus: string) => {
+        backendStatusMap.current[jobId] = newBackendStatus;
+        toast.success('Status updated', `Job order moved to ${targetColumn}`);
+      };
+
+      const onError = (err: unknown) => {
+        revert();
+        const msg = err instanceof Error ? err.message : 'Failed to update status';
+        toast.error('Update failed', msg);
+      };
+
+      switch (transition.action) {
+        case 'start':
+          startMutation.mutate(jobId, {
+            onSuccess: () => onSuccess('in_progress'),
+            onError,
+          });
+          break;
+        case 'complete':
+          completeMutation.mutate(jobId, {
+            onSuccess: () => onSuccess('completed'),
+            onError,
+          });
+          break;
+        case 'cancel':
+          cancelMutation.mutate(
+            { id: jobId },
+            {
+              onSuccess: () => onSuccess('cancelled'),
+              onError,
+            },
+          );
+          break;
+        case 'resume':
+          resumeMutation.mutate(jobId, {
+            onSuccess: () => onSuccess('in_progress'),
+            onError,
+          });
+          break;
+      }
+    },
+    [startMutation, completeMutation, cancelMutation, resumeMutation],
+  );
+
+  // Filter jobs by search term across title, id, project, and type
+  const filteredJobs = useMemo(() => {
+    if (!searchTerm.trim()) return jobs;
+    const term = searchTerm.toLowerCase();
+    return jobs.filter(
+      j =>
+        j.title?.toLowerCase().includes(term) ||
+        j.id?.toLowerCase().includes(term) ||
+        j.project?.toLowerCase().includes(term) ||
+        j.type?.toLowerCase().includes(term),
     );
+  }, [jobs, searchTerm]);
 
-    const revert = () => {
-      setJobs((prev) =>
-        prev.map((job) => (job.id === jobId ? { ...job, status: previousStatus } : job)),
-      );
-    };
-
-    const onSuccess = (newBackendStatus: string) => {
-      backendStatusMap.current[jobId] = newBackendStatus;
-      toast.success('Status updated', `Job order moved to ${targetColumn}`);
-    };
-
-    const onError = (err: unknown) => {
-      revert();
-      const msg = err instanceof Error ? err.message : 'Failed to update status';
-      toast.error('Update failed', msg);
-    };
-
-    switch (transition.action) {
-      case 'start':
-        startMutation.mutate(jobId, {
-          onSuccess: () => onSuccess('in_progress'),
-          onError,
-        });
-        break;
-      case 'complete':
-        completeMutation.mutate(jobId, {
-          onSuccess: () => onSuccess('completed'),
-          onError,
-        });
-        break;
-      case 'cancel':
-        cancelMutation.mutate({ id: jobId }, {
-          onSuccess: () => onSuccess('cancelled'),
-          onError,
-        });
-        break;
-      case 'resume':
-        resumeMutation.mutate(jobId, {
-          onSuccess: () => onSuccess('in_progress'),
-          onError,
-        });
-        break;
-    }
-  }, [startMutation, completeMutation, cancelMutation, resumeMutation]);
-
-  const getJobsByStatus = (status: JobStatus) => jobs.filter((j) => j.status === status);
+  const getJobsByStatus = (status: JobStatus) => filteredJobs.filter(j => j.status === status);
 
   if (joQuery.isLoading) {
     return (
       <div className="flex gap-4">
-        {[1, 2, 3, 4, 5].map((i) => (
+        {[1, 2, 3, 4, 5].map(i => (
           <div key={i} className="animate-pulse bg-white/5 rounded-2xl h-64 min-w-[320px]"></div>
         ))}
       </div>
@@ -377,17 +388,19 @@ export const JobOrdersKanban: React.FC = () => {
         </div>
         <div className="flex gap-3">
           <div className="relative">
-            <Search
-              size={16}
-              className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-400"
-            />
+            <Search size={16} className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-400" />
             <input
               type="text"
               placeholder="Search orders..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
               className="bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-nesma-secondary"
             />
           </div>
-          <button className="bg-nesma-primary text-white px-5 py-2 rounded-xl hover:bg-nesma-accent flex items-center gap-2 shadow-lg shadow-nesma-primary/20 transition-all border border-white/10">
+          <button
+            onClick={() => navigate('/admin/forms/jo')}
+            className="bg-nesma-primary text-white px-5 py-2 rounded-xl hover:bg-nesma-accent flex items-center gap-2 shadow-lg shadow-nesma-primary/20 transition-all border border-white/10"
+          >
             <Plus size={18} />
             <span className="hidden md:inline">New Job Order</span>
           </button>
@@ -401,7 +414,7 @@ export const JobOrdersKanban: React.FC = () => {
         onDragEnd={handleDragEnd}
       >
         <div className="flex gap-4 overflow-x-auto pb-4 flex-1 items-start snap-x">
-          {columns.map((col) => (
+          {columns.map(col => (
             <KanbanColumn
               key={col.status}
               status={col.status}
@@ -414,9 +427,7 @@ export const JobOrdersKanban: React.FC = () => {
         </div>
 
         {/* Drag Overlay — renders the card "floating" under the cursor */}
-        <DragOverlay>
-          {activeJob ? <JobCard job={activeJob} borderColor="blue" isDragOverlay /> : null}
-        </DragOverlay>
+        <DragOverlay>{activeJob ? <JobCard job={activeJob} borderColor="blue" isDragOverlay /> : null}</DragOverlay>
       </DndContext>
     </div>
   );

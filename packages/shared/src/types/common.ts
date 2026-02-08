@@ -62,7 +62,18 @@ export interface TableConfig {
 export interface FormField {
   key: string;
   label: string;
-  type: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'checkbox' | 'file' | 'email' | 'tel' | 'time' | 'readonly';
+  type:
+    | 'text'
+    | 'number'
+    | 'date'
+    | 'select'
+    | 'textarea'
+    | 'checkbox'
+    | 'file'
+    | 'email'
+    | 'tel'
+    | 'time'
+    | 'readonly';
   required?: boolean;
   options?: string[];
   defaultValue?: unknown;
@@ -90,6 +101,18 @@ export interface FormConfig {
   hasLineItems?: boolean;
   hasApproval?: boolean;
   statusFlow?: string[];
+}
+
+// ── API Request/Response ─────────────────────────────────────────────────
+
+export interface ListParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
+  sortBy?: string;
+  sortDir?: 'asc' | 'desc';
+  [key: string]: unknown;
 }
 
 // ── Status Tracking ──────────────────────────────────────────────────────

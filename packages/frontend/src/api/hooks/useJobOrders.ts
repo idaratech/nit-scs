@@ -1,23 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../client';
-
-interface ListParams {
-  page?: number;
-  pageSize?: number;
-  search?: string;
-  status?: string;
-  type?: string;
-  project?: string;
-  requester?: string;
-  [key: string]: unknown;
-}
-
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  meta?: { page: number; pageSize: number; total: number; totalPages: number };
-  message?: string;
-}
+import type { ListParams, ApiResponse } from '../types';
 
 // ── List ────────────────────────────────────────────────────────────────────
 export function useJobOrderList(params?: ListParams) {

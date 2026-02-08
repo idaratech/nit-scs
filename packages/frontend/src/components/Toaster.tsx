@@ -19,7 +19,7 @@ type Listener = (toast: Toast) => void;
 const listeners = new Set<Listener>();
 
 function emit(toast: Toast) {
-  listeners.forEach((fn) => fn(toast));
+  listeners.forEach(fn => fn(toast));
 }
 
 /** Show a toast notification from anywhere in the app */
@@ -57,10 +57,7 @@ const iconColorMap: Record<ToastType, string> = {
   info: 'text-blue-400',
 };
 
-const ToastItem: React.FC<{ toast: Toast; onDismiss: (id: string) => void }> = ({
-  toast: t,
-  onDismiss,
-}) => {
+const ToastItem: React.FC<{ toast: Toast; onDismiss: (id: string) => void }> = ({ toast: t, onDismiss }) => {
   const Icon = iconMap[t.type];
 
   useEffect(() => {
@@ -80,6 +77,7 @@ const ToastItem: React.FC<{ toast: Toast; onDismiss: (id: string) => void }> = (
       <button
         onClick={() => onDismiss(t.id)}
         className="text-gray-500 hover:text-white transition-colors shrink-0"
+        aria-label="Dismiss notification"
       >
         <X size={14} />
       </button>
@@ -93,20 +91,22 @@ export const Toaster: React.FC = () => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   useEffect(() => {
-    const handler: Listener = (t) => setToasts((prev) => [...prev.slice(-4), t]);
+    const handler: Listener = t => setToasts(prev => [...prev.slice(-4), t]);
     listeners.add(handler);
-    return () => { listeners.delete(handler); };
+    return () => {
+      listeners.delete(handler);
+    };
   }, []);
 
   const dismiss = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 w-80">
-      {toasts.map((t) => (
+    <div className="fixed top-4 end-4 z-[9999] flex flex-col gap-2 w-80" aria-live="polite" role="status">
+      {toasts.map(t => (
         <ToastItem key={t.id} toast={t} onDismiss={dismiss} />
       ))}
     </div>

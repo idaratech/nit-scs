@@ -50,7 +50,20 @@ const ROLE_PERMISSIONS: Record<string, ResourcePermissions> = {
     warehouses: ['read', 'export'],
     reports: ['read', 'export'],
   },
-  [UserRole.WAREHOUSE]: {
+  [UserRole.WAREHOUSE_SUPERVISOR]: {
+    mrrv: ['create', 'read', 'update', 'approve'],
+    mirv: ['read', 'update', 'approve'],
+    mrv: ['create', 'read', 'update'],
+    rfim: ['create', 'read'],
+    osd: ['create', 'read', 'update'],
+    gatepass: ['create', 'read', 'update'],
+    'stock-transfer': ['create', 'read', 'update'],
+    inventory: ['read', 'update', 'export'],
+    items: ['read', 'update'],
+    projects: ['read'],
+    warehouses: ['read'],
+  },
+  [UserRole.WAREHOUSE_STAFF]: {
     mrrv: ['create', 'read', 'update'],
     mirv: ['read', 'update'],
     mrv: ['create', 'read', 'update'],
@@ -60,20 +73,6 @@ const ROLE_PERMISSIONS: Record<string, ResourcePermissions> = {
     'stock-transfer': ['create', 'read'],
     inventory: ['read', 'update'],
     items: ['read'],
-    projects: ['read'],
-  },
-  [UserRole.TRANSPORT]: {
-    jo: ['read', 'update'],
-    fleet: ['read', 'update'],
-    suppliers: ['read'],
-    gatepass: ['read'],
-    projects: ['read'],
-  },
-  [UserRole.ENGINEER]: {
-    mirv: ['create', 'read'],
-    mrf: ['create', 'read'],
-    jo: ['create', 'read'],
-    inventory: ['read'],
     projects: ['read'],
   },
   [UserRole.LOGISTICS_COORDINATOR]: {
@@ -88,12 +87,6 @@ const ROLE_PERMISSIONS: Record<string, ResourcePermissions> = {
     inventory: ['read', 'export'],
     suppliers: ['read'],
   },
-  [UserRole.QC_OFFICER]: {
-    rfim: ['create', 'read', 'update', 'approve'],
-    osd: ['create', 'read', 'update'],
-    mrrv: ['read'],
-    inventory: ['read'],
-  },
   [UserRole.SITE_ENGINEER]: {
     mirv: ['create', 'read'],
     mrf: ['create', 'read'],
@@ -101,9 +94,20 @@ const ROLE_PERMISSIONS: Record<string, ResourcePermissions> = {
     inventory: ['read'],
     projects: ['read'],
   },
+  [UserRole.QC_OFFICER]: {
+    rfim: ['create', 'read', 'update', 'approve'],
+    osd: ['create', 'read', 'update'],
+    mrrv: ['read'],
+    inventory: ['read'],
+  },
+  [UserRole.FREIGHT_FORWARDER]: {
+    shipment: ['read', 'update'],
+    customs: ['read'],
+    gatepass: ['read'],
+  },
 };
 
-export function hasPermission(role: UserRole, resource: string, permission: Permission): boolean {
+export function hasPermission(role: UserRole | string, resource: string, permission: Permission): boolean {
   const rolePerms = ROLE_PERMISSIONS[role];
   if (!rolePerms) return false;
   const resourcePerms = rolePerms[resource];
@@ -111,38 +115,46 @@ export function hasPermission(role: UserRole, resource: string, permission: Perm
   return resourcePerms.includes(permission);
 }
 
-export function canCreate(role: UserRole, resource: string): boolean {
+export function canCreate(role: UserRole | string, resource: string): boolean {
   return hasPermission(role, resource, 'create');
 }
 
-export function canRead(role: UserRole, resource: string): boolean {
+export function canRead(role: UserRole | string, resource: string): boolean {
   return hasPermission(role, resource, 'read');
 }
 
-export function canUpdate(role: UserRole, resource: string): boolean {
+export function canUpdate(role: UserRole | string, resource: string): boolean {
   return hasPermission(role, resource, 'update');
 }
 
-export function canDelete(role: UserRole, resource: string): boolean {
+export function canDelete(role: UserRole | string, resource: string): boolean {
   return hasPermission(role, resource, 'delete');
 }
 
-export function canApprove(role: UserRole, resource: string): boolean {
+export function canApprove(role: UserRole | string, resource: string): boolean {
   return hasPermission(role, resource, 'approve');
 }
 
-export function canExport(role: UserRole, resource: string): boolean {
+export function canExport(role: UserRole | string, resource: string): boolean {
   return hasPermission(role, resource, 'export');
 }
 
-export function getMaxApprovalLevel(role: UserRole): number {
+export function getMaxApprovalLevel(role: UserRole | string): number {
   switch (role) {
-    case UserRole.ADMIN: return 5;
-    case UserRole.MANAGER: return 4;
-    case UserRole.LOGISTICS_COORDINATOR: return 2;
-    case UserRole.WAREHOUSE: return 1;
-    case UserRole.QC_OFFICER: return 1;
-    default: return 0;
+    case UserRole.ADMIN:
+      return 5;
+    case UserRole.MANAGER:
+      return 4;
+    case UserRole.LOGISTICS_COORDINATOR:
+      return 2;
+    case UserRole.WAREHOUSE_SUPERVISOR:
+      return 1;
+    case UserRole.WAREHOUSE_STAFF:
+      return 1;
+    case UserRole.QC_OFFICER:
+      return 1;
+    default:
+      return 0;
   }
 }
 
@@ -151,7 +163,7 @@ export function getRequiredApprovalLevel(documentType: 'mirv' | 'jo' | 'mrf', am
   return levels.find(l => amount >= l.minAmount && amount < l.maxAmount) || levels[levels.length - 1];
 }
 
-export function getPermissionMatrix(role: UserRole): ResourcePermissions {
+export function getPermissionMatrix(role: UserRole | string): ResourcePermissions {
   return ROLE_PERMISSIONS[role] || {};
 }
 
@@ -160,10 +172,9 @@ export function getPermissionMatrix(role: UserRole): ResourcePermissions {
 export type PermissionOverrides = Record<string, ResourcePermissions>;
 
 /** Merge API overrides with hardcoded defaults. Overrides replace per-role entirely when present. */
-export function getEffectivePermissions(role: UserRole, overrides?: PermissionOverrides): ResourcePermissions {
+export function getEffectivePermissions(role: UserRole | string, overrides?: PermissionOverrides): ResourcePermissions {
   const defaults = ROLE_PERMISSIONS[role] || {};
   if (!overrides || !overrides[role]) return defaults;
-  // Merge: override resources replace defaults; missing resources keep defaults
   const roleOverrides = overrides[role];
   const merged = { ...defaults };
   for (const [resource, perms] of Object.entries(roleOverrides)) {
@@ -174,7 +185,7 @@ export function getEffectivePermissions(role: UserRole, overrides?: PermissionOv
 
 /** Check effective permissions including overrides */
 export function hasPermissionWithOverrides(
-  role: UserRole,
+  role: UserRole | string,
   resource: string,
   permission: Permission,
   overrides?: PermissionOverrides,
@@ -184,3 +195,5 @@ export function hasPermissionWithOverrides(
   if (!resourcePerms) return false;
   return resourcePerms.includes(permission);
 }
+
+export { ROLE_PERMISSIONS };

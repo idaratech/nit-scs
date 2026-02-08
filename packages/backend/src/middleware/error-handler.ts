@@ -1,11 +1,26 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
+import { AppError, RequestValidationError } from '@nit-scs/shared';
 import { log } from '../config/logger.js';
 
 export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction) {
   log('error', err.message, { stack: err.stack });
 
-  // Prisma known request errors
+  // ── Custom AppError subclasses ────────────────────────────────────────
+  if (err instanceof AppError) {
+    const body: Record<string, unknown> = {
+      success: false,
+      message: err.message,
+      code: err.code,
+    };
+    if (err instanceof RequestValidationError && err.details) {
+      body.errors = err.details;
+    }
+    res.status(err.statusCode).json(body);
+    return;
+  }
+
+  // ── Prisma known request errors ───────────────────────────────────────
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     switch (err.code) {
       case 'P2002': {
@@ -34,7 +49,7 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
     }
   }
 
-  // Prisma validation errors
+  // ── Prisma validation errors ──────────────────────────────────────────
   if (err instanceof Prisma.PrismaClientValidationError) {
     res.status(400).json({
       success: false,
@@ -44,7 +59,7 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
     return;
   }
 
-  // Default 500
+  // ── Default 500 ───────────────────────────────────────────────────────
   res.status(500).json({
     success: false,
     message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,

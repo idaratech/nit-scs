@@ -6,39 +6,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../client';
 import type {
-  Project, Supplier, Employee, Warehouse, Generator,
-  EquipmentFleet, SupplierRate, InventoryItem,
+  Project,
+  Supplier,
+  Employee,
+  Warehouse,
+  Generator,
+  EquipmentFleet,
+  SupplierRate,
+  InventoryItem,
 } from '@nit-scs/shared/types';
+import type { ListParams, ApiResponse } from '../types';
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
-export interface ListParams {
-  page?: number;
-  pageSize?: number;
-  search?: string;
-  sortBy?: string;
-  sortDir?: 'asc' | 'desc';
-  [key: string]: unknown;
-}
-
-export interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  meta?: {
-    page: number;
-    pageSize: number;
-    total: number;
-    totalPages: number;
-  };
-  message?: string;
-}
+export type { ListParams, ApiResponse };
 
 // ── Generic Resource Hook Factory ──────────────────────────────────────────
 
-export function createResourceHooks<T extends { id: string }>(
-  resourcePath: string,
-  queryKey: string,
-) {
+export function createResourceHooks<T extends { id: string }>(resourcePath: string, queryKey: string) {
   function useList(params?: ListParams) {
     return useQuery({
       queryKey: [queryKey, params],
@@ -99,141 +82,222 @@ export function createResourceHooks<T extends { id: string }>(
 
 // Master data lookup tables
 export const {
-  useList: useRegions, useOne: useRegion,
-  useCreate: useCreateRegion, useUpdate: useUpdateRegion, useRemove: useDeleteRegion,
+  useList: useRegions,
+  useOne: useRegion,
+  useCreate: useCreateRegion,
+  useUpdate: useUpdateRegion,
+  useRemove: useDeleteRegion,
 } = createResourceHooks<{ id: string; name: string }>('/regions', 'regions');
 
 export const {
-  useList: useCities, useOne: useCity,
-  useCreate: useCreateCity, useUpdate: useUpdateCity, useRemove: useDeleteCity,
+  useList: useCities,
+  useOne: useCity,
+  useCreate: useCreateCity,
+  useUpdate: useUpdateCity,
+  useRemove: useDeleteCity,
 } = createResourceHooks<{ id: string; name: string; regionId: string }>('/cities', 'cities');
 
 export const {
-  useList: usePorts, useOne: usePort,
-  useCreate: useCreatePort, useUpdate: useUpdatePort, useRemove: useDeletePort,
+  useList: usePorts,
+  useOne: usePort,
+  useCreate: useCreatePort,
+  useUpdate: useUpdatePort,
+  useRemove: useDeletePort,
 } = createResourceHooks<{ id: string; name: string; city: string }>('/ports', 'ports');
 
 export const {
-  useList: useUoms, useOne: useUom,
-  useCreate: useCreateUom, useUpdate: useUpdateUom, useRemove: useDeleteUom,
+  useList: useUoms,
+  useOne: useUom,
+  useCreate: useCreateUom,
+  useUpdate: useUpdateUom,
+  useRemove: useDeleteUom,
 } = createResourceHooks<{ id: string; name: string; symbol: string }>('/uoms', 'uoms');
 
 export const {
-  useList: useWarehouseTypes, useOne: useWarehouseType,
-  useCreate: useCreateWarehouseType, useUpdate: useUpdateWarehouseType, useRemove: useDeleteWarehouseType,
+  useList: useWarehouseTypes,
+  useOne: useWarehouseType,
+  useCreate: useCreateWarehouseType,
+  useUpdate: useUpdateWarehouseType,
+  useRemove: useDeleteWarehouseType,
 } = createResourceHooks<{ id: string; name: string }>('/warehouse-types', 'warehouse-types');
 
 export const {
-  useList: useEquipmentCategories, useOne: useEquipmentCategory,
-  useCreate: useCreateEquipmentCategory, useUpdate: useUpdateEquipmentCategory, useRemove: useDeleteEquipmentCategory,
+  useList: useEquipmentCategories,
+  useOne: useEquipmentCategory,
+  useCreate: useCreateEquipmentCategory,
+  useUpdate: useUpdateEquipmentCategory,
+  useRemove: useDeleteEquipmentCategory,
 } = createResourceHooks<{ id: string; name: string }>('/equipment-categories', 'equipment-categories');
 
 export const {
-  useList: useEquipmentTypes, useOne: useEquipmentType,
-  useCreate: useCreateEquipmentType, useUpdate: useUpdateEquipmentType, useRemove: useDeleteEquipmentType,
+  useList: useEquipmentTypes,
+  useOne: useEquipmentType,
+  useCreate: useCreateEquipmentType,
+  useUpdate: useUpdateEquipmentType,
+  useRemove: useDeleteEquipmentType,
 } = createResourceHooks<{ id: string; name: string; categoryId: string }>('/equipment-types', 'equipment-types');
 
 // Core business entities
 export const {
-  useList: useProjects, useOne: useProject,
-  useCreate: useCreateProject, useUpdate: useUpdateProject, useRemove: useDeleteProject,
+  useList: useProjects,
+  useOne: useProject,
+  useCreate: useCreateProject,
+  useUpdate: useUpdateProject,
+  useRemove: useDeleteProject,
 } = createResourceHooks<Project>('/projects', 'projects');
 
 export const {
-  useList: useEmployees, useOne: useEmployee,
-  useCreate: useCreateEmployee, useUpdate: useUpdateEmployee, useRemove: useDeleteEmployee,
+  useList: useEmployees,
+  useOne: useEmployee,
+  useCreate: useCreateEmployee,
+  useUpdate: useUpdateEmployee,
+  useRemove: useDeleteEmployee,
 } = createResourceHooks<Employee>('/employees', 'employees');
 
 export const {
-  useList: useSuppliers, useOne: useSupplier,
-  useCreate: useCreateSupplier, useUpdate: useUpdateSupplier, useRemove: useDeleteSupplier,
+  useList: useSuppliers,
+  useOne: useSupplier,
+  useCreate: useCreateSupplier,
+  useUpdate: useUpdateSupplier,
+  useRemove: useDeleteSupplier,
 } = createResourceHooks<Supplier>('/suppliers', 'suppliers');
 
 export const {
-  useList: useWarehouses, useOne: useWarehouse,
-  useCreate: useCreateWarehouse, useUpdate: useUpdateWarehouse, useRemove: useDeleteWarehouse,
+  useList: useWarehouses,
+  useOne: useWarehouse,
+  useCreate: useCreateWarehouse,
+  useUpdate: useUpdateWarehouse,
+  useRemove: useDeleteWarehouse,
 } = createResourceHooks<Warehouse>('/warehouses', 'warehouses');
 
 export const {
-  useList: useItems, useOne: useItem,
-  useCreate: useCreateItem, useUpdate: useUpdateItem, useRemove: useDeleteItem,
+  useList: useItems,
+  useOne: useItem,
+  useCreate: useCreateItem,
+  useUpdate: useUpdateItem,
+  useRemove: useDeleteItem,
 } = createResourceHooks<{ id: string; code: string; name: string; category: string }>('/items', 'items');
 
 export const {
-  useList: useGenerators, useOne: useGenerator,
-  useCreate: useCreateGenerator, useUpdate: useUpdateGenerator, useRemove: useDeleteGenerator,
+  useList: useGenerators,
+  useOne: useGenerator,
+  useCreate: useCreateGenerator,
+  useUpdate: useUpdateGenerator,
+  useRemove: useDeleteGenerator,
 } = createResourceHooks<Generator>('/generators', 'generators');
 
 export const {
-  useList: useFleet, useOne: useFleetItem,
-  useCreate: useCreateFleetItem, useUpdate: useUpdateFleetItem, useRemove: useDeleteFleetItem,
+  useList: useFleet,
+  useOne: useFleetItem,
+  useCreate: useCreateFleetItem,
+  useUpdate: useUpdateFleetItem,
+  useRemove: useDeleteFleetItem,
 } = createResourceHooks<EquipmentFleet>('/equipment-fleet', 'equipment-fleet');
 
 export const {
-  useList: useSupplierRates, useOne: useSupplierRate,
-  useCreate: useCreateSupplierRate, useUpdate: useUpdateSupplierRate, useRemove: useDeleteSupplierRate,
+  useList: useSupplierRates,
+  useOne: useSupplierRate,
+  useCreate: useCreateSupplierRate,
+  useUpdate: useUpdateSupplierRate,
+  useRemove: useDeleteSupplierRate,
 } = createResourceHooks<SupplierRate>('/supplier-rates', 'supplier-rates');
 
 export const {
-  useList: useInventory, useOne: useInventoryItem,
-  useCreate: useCreateInventoryItem, useUpdate: useUpdateInventoryItem, useRemove: useDeleteInventoryItem,
+  useList: useInventory,
+  useOne: useInventoryItem,
+  useCreate: useCreateInventoryItem,
+  useUpdate: useUpdateInventoryItem,
+  useRemove: useDeleteInventoryItem,
 } = createResourceHooks<InventoryItem>('/inventory', 'inventory');
 
 // ── Document Resources (MRRV, MIRV, MRV, RFIM, OSD, JO, etc.) ────────────
 
 export const {
-  useList: useMrrvList, useOne: useMrrv,
-  useCreate: useCreateMrrv, useUpdate: useUpdateMrrv, useRemove: useDeleteMrrv,
+  useList: useMrrvList,
+  useOne: useMrrv,
+  useCreate: useCreateMrrv,
+  useUpdate: useUpdateMrrv,
+  useRemove: useDeleteMrrv,
 } = createResourceHooks<{ id: string } & Record<string, unknown>>('/mrrv', 'mrrv');
 
 export const {
-  useList: useMirvList, useOne: useMirv,
-  useCreate: useCreateMirv, useUpdate: useUpdateMirv, useRemove: useDeleteMirv,
+  useList: useMirvList,
+  useOne: useMirv,
+  useCreate: useCreateMirv,
+  useUpdate: useUpdateMirv,
+  useRemove: useDeleteMirv,
 } = createResourceHooks<{ id: string } & Record<string, unknown>>('/mirv', 'mirv');
 
 export const {
-  useList: useMrvList, useOne: useMrv,
-  useCreate: useCreateMrv, useUpdate: useUpdateMrv, useRemove: useDeleteMrv,
+  useList: useMrvList,
+  useOne: useMrv,
+  useCreate: useCreateMrv,
+  useUpdate: useUpdateMrv,
+  useRemove: useDeleteMrv,
 } = createResourceHooks<{ id: string } & Record<string, unknown>>('/mrv', 'mrv');
 
 export const {
-  useList: useRfimList, useOne: useRfim,
-  useCreate: useCreateRfim, useUpdate: useUpdateRfim, useRemove: useDeleteRfim,
+  useList: useRfimList,
+  useOne: useRfim,
+  useCreate: useCreateRfim,
+  useUpdate: useUpdateRfim,
+  useRemove: useDeleteRfim,
 } = createResourceHooks<{ id: string } & Record<string, unknown>>('/rfim', 'rfim');
 
 export const {
-  useList: useOsdList, useOne: useOsd,
-  useCreate: useCreateOsd, useUpdate: useUpdateOsd, useRemove: useDeleteOsd,
+  useList: useOsdList,
+  useOne: useOsd,
+  useCreate: useCreateOsd,
+  useUpdate: useUpdateOsd,
+  useRemove: useDeleteOsd,
 } = createResourceHooks<{ id: string } & Record<string, unknown>>('/osd', 'osd');
 
 export const {
-  useList: useJobOrders, useOne: useJobOrder,
-  useCreate: useCreateJobOrder, useUpdate: useUpdateJobOrder, useRemove: useDeleteJobOrder,
+  useList: useJobOrders,
+  useOne: useJobOrder,
+  useCreate: useCreateJobOrder,
+  useUpdate: useUpdateJobOrder,
+  useRemove: useDeleteJobOrder,
 } = createResourceHooks<{ id: string } & Record<string, unknown>>('/job-orders', 'job-orders');
 
 export const {
-  useList: useGatePasses, useOne: useGatePass,
-  useCreate: useCreateGatePass, useUpdate: useUpdateGatePass, useRemove: useDeleteGatePass,
+  useList: useGatePasses,
+  useOne: useGatePass,
+  useCreate: useCreateGatePass,
+  useUpdate: useUpdateGatePass,
+  useRemove: useDeleteGatePass,
 } = createResourceHooks<{ id: string } & Record<string, unknown>>('/gate-passes', 'gate-passes');
 
 export const {
-  useList: useStockTransfers, useOne: useStockTransfer,
-  useCreate: useCreateStockTransfer, useUpdate: useUpdateStockTransfer, useRemove: useDeleteStockTransfer,
+  useList: useStockTransfers,
+  useOne: useStockTransfer,
+  useCreate: useCreateStockTransfer,
+  useUpdate: useUpdateStockTransfer,
+  useRemove: useDeleteStockTransfer,
 } = createResourceHooks<{ id: string } & Record<string, unknown>>('/stock-transfers', 'stock-transfers');
 
 export const {
-  useList: useShipments, useOne: useShipment,
-  useCreate: useCreateShipment, useUpdate: useUpdateShipment, useRemove: useDeleteShipment,
+  useList: useShipments,
+  useOne: useShipment,
+  useCreate: useCreateShipment,
+  useUpdate: useUpdateShipment,
+  useRemove: useDeleteShipment,
 } = createResourceHooks<{ id: string } & Record<string, unknown>>('/shipments', 'shipments');
 
 export const {
-  useList: useCustomsClearances, useOne: useCustomsClearance,
-  useCreate: useCreateCustomsClearance, useUpdate: useUpdateCustomsClearance, useRemove: useDeleteCustomsClearance,
+  useList: useCustomsClearances,
+  useOne: useCustomsClearance,
+  useCreate: useCreateCustomsClearance,
+  useUpdate: useUpdateCustomsClearance,
+  useRemove: useDeleteCustomsClearance,
 } = createResourceHooks<{ id: string } & Record<string, unknown>>('/customs', 'customs');
 
 export const {
-  useList: useMrfList, useOne: useMrf,
-  useCreate: useCreateMrf, useUpdate: useUpdateMrf, useRemove: useDeleteMrf,
+  useList: useMrfList,
+  useOne: useMrf,
+  useCreate: useCreateMrf,
+  useUpdate: useUpdateMrf,
+  useRemove: useDeleteMrf,
 } = createResourceHooks<{ id: string } & Record<string, unknown>>('/mrf', 'mrf');
 
 // ── Dynamic Hook Map (for AdminResourceList) ──────────────────────────────

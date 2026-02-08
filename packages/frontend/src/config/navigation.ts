@@ -106,24 +106,24 @@ export const NAVIGATION_LINKS: Record<string, NavItem[]> = {
       ],
     },
   ],
-  [UserRole.WAREHOUSE]: [
+  [UserRole.WAREHOUSE_SUPERVISOR]: [
     { label: 'Dashboard', path: '/warehouse' },
     { label: 'Receive (MRRV)', path: '/warehouse/receive' },
     { label: 'Issue (MIRV)', path: '/warehouse/issue' },
     { label: 'Inventory', path: '/warehouse/inventory' },
     { label: 'Return', path: '/warehouse/return' },
   ],
-  [UserRole.TRANSPORT]: [
-    { label: 'Dashboard', path: '/transport' },
-    { label: 'Job Orders', path: '/transport/jobs' },
-    { label: 'Fleet', path: '/transport/fleet' },
-    { label: 'Suppliers', path: '/transport/suppliers' },
+  [UserRole.WAREHOUSE_STAFF]: [
+    { label: 'Dashboard', path: '/warehouse' },
+    { label: 'Receive (MRRV)', path: '/warehouse/receive' },
+    { label: 'Issue (MIRV)', path: '/warehouse/issue' },
+    { label: 'Inventory', path: '/warehouse/inventory' },
+    { label: 'Return', path: '/warehouse/return' },
   ],
-  [UserRole.ENGINEER]: [
-    { label: 'Dashboard', path: '/engineer' },
-    { label: 'New Request', path: '/engineer/new' },
-    { label: 'My Requests', path: '/engineer/my-requests' },
-    { label: 'My Project', path: '/engineer/project' },
+  [UserRole.FREIGHT_FORWARDER]: [
+    { label: 'Dashboard', path: '/transport' },
+    { label: 'Shipments', path: '/transport/shipments' },
+    { label: 'Gate Passes', path: '/transport/gate-passes' },
   ],
   [UserRole.MANAGER]: [
     { label: 'Dashboard', path: '/manager' },

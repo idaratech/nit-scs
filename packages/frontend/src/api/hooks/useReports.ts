@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../client';
-
-interface ApiResponse<T> { success: boolean; data: T }
+import type { ApiResponse } from '../types';
 
 export interface ReportFilters {
   dateFrom?: string;

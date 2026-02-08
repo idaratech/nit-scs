@@ -5,6 +5,7 @@ import { queryClient } from './api/queryClient';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Toaster } from './components/Toaster';
 import App from './App';
+import './i18n/i18n';
 import './styles/globals.css';
 
 const rootElement = document.getElementById('root');

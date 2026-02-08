@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Shield, Check, X, Eye, Edit, Plus, Trash2, CheckCircle, Lock, Save } from 'lucide-react';
+import { Shield, Check, X, Eye, Edit, Lock, Save } from 'lucide-react';
 import { UserRole } from '@nit-scs/shared/types';
 import { getPermissionMatrix, getEffectivePermissions } from '@nit-scs/shared/permissions';
 import type { PermissionOverrides, Permission } from '@nit-scs/shared/permissions';
@@ -8,28 +8,60 @@ import { usePermissions, useUpdatePermissions } from '@/api/hooks/usePermissions
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const ALL_RESOURCES = [
-  'mrrv', 'mirv', 'mrv', 'rfim', 'osd', 'jo',
-  'gatepass', 'stock-transfer', 'mrf', 'shipment', 'customs',
-  'inventory', 'items', 'projects', 'suppliers', 'employees',
-  'warehouses', 'reports', 'audit-log', 'settings',
+  'mrrv',
+  'mirv',
+  'mrv',
+  'rfim',
+  'osd',
+  'jo',
+  'gatepass',
+  'stock-transfer',
+  'mrf',
+  'shipment',
+  'customs',
+  'inventory',
+  'items',
+  'projects',
+  'suppliers',
+  'employees',
+  'warehouses',
+  'reports',
+  'audit-log',
+  'settings',
 ];
 
 const RESOURCE_LABELS: Record<string, string> = {
-  mrrv: 'MRRV', mirv: 'MIRV', mrv: 'MRV', rfim: 'RFIM', osd: 'OSD', jo: 'Job Orders',
-  gatepass: 'Gate Pass', 'stock-transfer': 'Stock Transfer', mrf: 'MRF',
-  shipment: 'Shipments', customs: 'Customs', inventory: 'Inventory',
-  items: 'Items', projects: 'Projects', suppliers: 'Suppliers',
-  employees: 'Employees', warehouses: 'Warehouses', reports: 'Reports',
-  'audit-log': 'Audit Log', settings: 'Settings',
-};
-
-const PERMISSION_ICONS: Record<string, React.FC<{ size?: number; className?: string }>> = {
-  create: Plus, read: Eye, update: Edit, delete: Trash2, approve: CheckCircle, export: Shield,
+  mrrv: 'MRRV',
+  mirv: 'MIRV',
+  mrv: 'MRV',
+  rfim: 'RFIM',
+  osd: 'OSD',
+  jo: 'Job Orders',
+  gatepass: 'Gate Pass',
+  'stock-transfer': 'Stock Transfer',
+  mrf: 'MRF',
+  shipment: 'Shipments',
+  customs: 'Customs',
+  inventory: 'Inventory',
+  items: 'Items',
+  projects: 'Projects',
+  suppliers: 'Suppliers',
+  employees: 'Employees',
+  warehouses: 'Warehouses',
+  reports: 'Reports',
+  'audit-log': 'Audit Log',
+  settings: 'Settings',
 };
 
 const ROLES: UserRole[] = [
-  UserRole.ADMIN, UserRole.MANAGER, UserRole.WAREHOUSE, UserRole.TRANSPORT,
-  UserRole.ENGINEER, UserRole.LOGISTICS_COORDINATOR, UserRole.QC_OFFICER, UserRole.SITE_ENGINEER,
+  UserRole.ADMIN,
+  UserRole.MANAGER,
+  UserRole.WAREHOUSE_SUPERVISOR,
+  UserRole.WAREHOUSE_STAFF,
+  UserRole.LOGISTICS_COORDINATOR,
+  UserRole.SITE_ENGINEER,
+  UserRole.QC_OFFICER,
+  UserRole.FREIGHT_FORWARDER,
 ];
 const PERMISSIONS = ['create', 'read', 'update', 'delete', 'approve', 'export'];
 
@@ -48,10 +80,13 @@ export const RolesPage: React.FC = () => {
   const [dirty, setDirty] = useState(false);
 
   // Build the effective matrix per role using API overrides (view mode) or local edits (edit mode)
-  const effectiveForRole = useCallback((role: UserRole): Record<string, string[]> => {
-    if (editMode) return local[role] ?? getPermissionMatrix(role);
-    return getEffectivePermissions(role, overrides);
-  }, [editMode, local, overrides]);
+  const effectiveForRole = useCallback(
+    (role: UserRole): Record<string, string[]> => {
+      if (editMode) return local[role] ?? getPermissionMatrix(role);
+      return getEffectivePermissions(role, overrides);
+    },
+    [editMode, local, overrides],
+  );
 
   // Enter edit mode — clone current effective permissions into local state
   const enterEditMode = useCallback(() => {
@@ -136,13 +171,15 @@ export const RolesPage: React.FC = () => {
   }, [overrides]);
 
   // Role cards: total permission count
-  const roleStats = useMemo(() =>
-    ROLES.map(role => {
-      const matrix = effectiveForRole(role);
-      const total = Object.values(matrix).reduce((s, p) => s + p.length, 0);
-      return { role, total, resources: Object.keys(matrix) };
-    }),
-  [effectiveForRole]);
+  const roleStats = useMemo(
+    () =>
+      ROLES.map(role => {
+        const matrix = effectiveForRole(role);
+        const total = Object.values(matrix).reduce((s, p) => s + p.length, 0);
+        return { role, total, resources: Object.keys(matrix) };
+      }),
+    [effectiveForRole],
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -175,10 +212,17 @@ export const RolesPage: React.FC = () => {
       {/* Role Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {roleStats.map(({ role, total, resources }) => (
-          <div key={role} className="glass-card rounded-xl p-4 border border-white/10 hover:border-nesma-secondary/30 transition-all">
+          <div
+            key={role}
+            className="glass-card rounded-xl p-4 border border-white/10 hover:border-nesma-secondary/30 transition-all"
+          >
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-nesma-primary/20 flex items-center justify-center border border-nesma-primary/30">
-                {role === UserRole.ADMIN ? <Lock size={18} className="text-nesma-secondary" /> : <Shield size={18} className="text-nesma-secondary" />}
+                {role === UserRole.ADMIN ? (
+                  <Lock size={18} className="text-nesma-secondary" />
+                ) : (
+                  <Shield size={18} className="text-nesma-secondary" />
+                )}
               </div>
               <div>
                 <p className="text-sm font-bold text-white">{role}</p>
@@ -187,7 +231,10 @@ export const RolesPage: React.FC = () => {
             </div>
             <div className="flex gap-1 mt-2 flex-wrap">
               {resources.slice(0, 5).map(r => (
-                <span key={r} className="text-[8px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-gray-500">
+                <span
+                  key={r}
+                  className="text-[8px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-gray-500"
+                >
                   {RESOURCE_LABELS[r] || r}
                 </span>
               ))}
@@ -207,7 +254,9 @@ export const RolesPage: React.FC = () => {
           <div>
             <h3 className="text-sm font-bold text-white">Permission Matrix</h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              {editMode ? 'Click cells to toggle permissions — Admin row is locked' : 'Read-only view of current permissions'}
+              {editMode
+                ? 'Click cells to toggle permissions — Admin row is locked'
+                : 'Read-only view of current permissions'}
             </p>
           </div>
           {editMode && (
@@ -225,7 +274,10 @@ export const RolesPage: React.FC = () => {
                   Resource
                 </th>
                 {ROLES.map(role => (
-                  <th key={role} className="px-2 py-3 text-[10px] text-gray-400 uppercase tracking-wider font-semibold text-center min-w-[90px]">
+                  <th
+                    key={role}
+                    className="px-2 py-3 text-[10px] text-gray-400 uppercase tracking-wider font-semibold text-center min-w-[90px]"
+                  >
                     {role.split(' ')[0]}
                   </th>
                 ))}
@@ -249,11 +301,19 @@ export const RolesPage: React.FC = () => {
                             if (!editMode || isAdmin) {
                               // View mode or locked admin row
                               return has ? (
-                                <span key={p} className="w-5 h-5 rounded bg-emerald-500/20 flex items-center justify-center" title={p}>
+                                <span
+                                  key={p}
+                                  className="w-5 h-5 rounded bg-emerald-500/20 flex items-center justify-center"
+                                  title={p}
+                                >
                                   <Check size={10} className="text-emerald-400" />
                                 </span>
                               ) : (
-                                <span key={p} className="w-5 h-5 rounded bg-white/5 flex items-center justify-center" title={p}>
+                                <span
+                                  key={p}
+                                  className="w-5 h-5 rounded bg-white/5 flex items-center justify-center"
+                                  title={p}
+                                >
                                   <X size={8} className="text-gray-700" />
                                 </span>
                               );
@@ -265,16 +325,15 @@ export const RolesPage: React.FC = () => {
                                 type="button"
                                 onClick={() => togglePerm(role, resource, p)}
                                 className={`w-5 h-5 rounded flex items-center justify-center transition-colors cursor-pointer ${
-                                  has
-                                    ? 'bg-emerald-500/30 hover:bg-emerald-500/40'
-                                    : 'bg-white/5 hover:bg-white/15'
+                                  has ? 'bg-emerald-500/30 hover:bg-emerald-500/40' : 'bg-white/5 hover:bg-white/15'
                                 }`}
                                 title={`${has ? 'Remove' : 'Add'} ${p}`}
                               >
-                                {has
-                                  ? <Check size={10} className="text-emerald-400" />
-                                  : <X size={8} className="text-gray-600" />
-                                }
+                                {has ? (
+                                  <Check size={10} className="text-emerald-400" />
+                                ) : (
+                                  <X size={8} className="text-gray-600" />
+                                )}
                               </button>
                             );
                           })}

@@ -6,13 +6,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../client';
 import type { AuditLogEntry } from '@nit-scs/shared/types';
-
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  meta?: { page: number; pageSize: number; total: number; totalPages: number };
-  message?: string;
-}
+import type { ApiResponse } from '../types';
 
 export interface AuditLogParams {
   page?: number;
