@@ -28,6 +28,9 @@ jobs:
       - name: Build shared package
         run: pnpm build:shared
 
+      - name: Generate Prisma client
+        run: pnpm --filter @nit-scs/backend exec prisma generate
+
       - name: Lint
         run: pnpm lint
 
