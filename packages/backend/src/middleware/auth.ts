@@ -3,6 +3,7 @@ import { verifyAccessToken, type JwtPayload } from '../utils/jwt.js';
 import { sendError } from '../utils/response.js';
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user?: JwtPayload;

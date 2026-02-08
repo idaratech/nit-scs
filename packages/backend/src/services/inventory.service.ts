@@ -1,4 +1,3 @@
-import { Prisma } from '@prisma/client';
 import { prisma } from '../utils/prisma.js';
 import { generateDocumentNumber } from './document-number.service.js';
 import { createAuditLog } from './audit.service.js';
@@ -32,7 +31,7 @@ export interface ConsumptionResult {
 export async function addStock(params: AddStockParams): Promise<void> {
   const { itemId, warehouseId, qty, unitCost, supplierId, mrrvLineId, expiryDate, performedById } = params;
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async tx => {
     // 1. Upsert InventoryLevel - increment qtyOnHand
     await tx.inventoryLevel.upsert({
       where: {
@@ -94,12 +93,8 @@ export async function addStock(params: AddStockParams): Promise<void> {
 
 // ── Reserve Stock (FIFO) ────────────────────────────────────────────────
 
-export async function reserveStock(
-  itemId: string,
-  warehouseId: string,
-  qty: number,
-): Promise<boolean> {
-  return prisma.$transaction(async (tx) => {
+export async function reserveStock(itemId: string, warehouseId: string, qty: number): Promise<boolean> {
+  return prisma.$transaction(async tx => {
     // 1. Check availability
     const level = await tx.inventoryLevel.findUnique({
       where: { itemId_warehouseId: { itemId, warehouseId } },
@@ -159,12 +154,8 @@ export async function reserveStock(
 
 // ── Release Reservation ─────────────────────────────────────────────────
 
-export async function releaseReservation(
-  itemId: string,
-  warehouseId: string,
-  qty: number,
-): Promise<void> {
-  await prisma.$transaction(async (tx) => {
+export async function releaseReservation(itemId: string, warehouseId: string, qty: number): Promise<void> {
+  await prisma.$transaction(async tx => {
     // 1. Decrement qtyReserved in InventoryLevel
     await tx.inventoryLevel.update({
       where: { itemId_warehouseId: { itemId, warehouseId } },
@@ -215,7 +206,7 @@ export async function consumeReservation(
   qty: number,
   mirvLineId: string,
 ): Promise<ConsumptionResult> {
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async tx => {
     // 1. Decrement both qtyOnHand AND qtyReserved in InventoryLevel
     await tx.inventoryLevel.update({
       where: { itemId_warehouseId: { itemId, warehouseId } },
@@ -289,7 +280,7 @@ export async function deductStock(
   qty: number,
   mirvLineId: string,
 ): Promise<ConsumptionResult> {
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async tx => {
     // 1. Check availability
     const level = await tx.inventoryLevel.findUnique({
       where: { itemId_warehouseId: { itemId, warehouseId } },
@@ -362,10 +353,7 @@ export async function deductStock(
 
 // ── Get Stock Level ─────────────────────────────────────────────────────
 
-export async function getStockLevel(
-  itemId: string,
-  warehouseId: string,
-): Promise<StockLevel> {
+export async function getStockLevel(itemId: string, warehouseId: string): Promise<StockLevel> {
   const level = await prisma.inventoryLevel.findUnique({
     where: { itemId_warehouseId: { itemId, warehouseId } },
   });

@@ -10,6 +10,7 @@ export interface PaginationQuery {
 }
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       pagination?: PaginationQuery;
@@ -22,7 +23,7 @@ export function paginate(defaultSort = 'createdAt') {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 20));
     const sortBy = (req.query.sortBy as string) || defaultSort;
-    const sortDir = ((req.query.sortDir as string) || 'desc') === 'asc' ? 'asc' as const : 'desc' as const;
+    const sortDir = ((req.query.sortDir as string) || 'desc') === 'asc' ? ('asc' as const) : ('desc' as const);
     const search = req.query.search as string | undefined;
 
     req.pagination = {

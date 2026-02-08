@@ -1,5 +1,4 @@
 import { prisma } from '../utils/prisma.js';
-import { emitToRole, emitToUser } from '../socket/setup.js';
 import { canTransition } from '@nit-scs/shared';
 import { log } from '../config/logger.js';
 import { sendTemplatedEmail } from '../services/email.service.js';
@@ -95,11 +94,9 @@ async function handleCreateNotification(params: Record<string, unknown>, event: 
     });
   }
 
-  // Socket.IO push is handled by the notification service subscribers,
-  // so we only need to create DB notifications here.
-
+  // Create DB notifications — Socket.IO push is handled by notification service subscribers
   for (const recipient of recipients) {
-    const notification = await prisma.notification.create({
+    await prisma.notification.create({
       data: {
         recipientId: recipient.id,
         title,
@@ -109,16 +106,6 @@ async function handleCreateNotification(params: Record<string, unknown>, event: 
         referenceId: event.entityId,
       },
     });
-
-    // Push via Socket.IO if available
-    if (io) {
-      emitToUser(io, recipient.id, 'notification:new', notification);
-    }
-  }
-
-  // Also emit to role room for real-time UI updates
-  if (recipientRole && io) {
-    emitToRole(io, recipientRole, 'notification:new', { title, body, entityType: event.entityType });
   }
 
   log('info', `[Action:create_notification] Created ${recipients.length} notification(s)`);
