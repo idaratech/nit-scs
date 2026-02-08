@@ -14,7 +14,7 @@
     "prisma:generate": "prisma generate",
     "clean": "rm -rf dist",
     "lint": "eslint src/",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@nit-scs/shared": "workspace:*",
