@@ -14,10 +14,11 @@ router.get('/', (_req: Request, res: Response) => {
   sendSuccess(res, { dataSources: listDataSources() });
 });
 
-// GET /api/widget-data/:dataSource(*) — fetch data from a registered source
-router.get('/:dataSource(*)', async (req: Request, res: Response, next: NextFunction) => {
+// GET /api/widget-data/* — fetch data from a registered source (e.g. stats/projects)
+router.get('/*dataSource', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const key = Array.isArray(req.params.dataSource) ? req.params.dataSource.join('/') : req.params.dataSource;
+    const raw = req.params.dataSource;
+    const key = Array.isArray(raw) ? raw.join('/') : raw;
 
     const fn = getDataSource(key);
     if (!fn) {
