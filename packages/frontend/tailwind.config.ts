@@ -18,6 +18,7 @@ export default {
       animation: {
         'fade-in': 'fadeIn 200ms ease-out',
         'slide-in-right': 'slideInRight 300ms ease-out',
+        'slide-up': 'slideUp 300ms ease-out',
       },
       keyframes: {
         fadeIn: {
@@ -27,6 +28,10 @@ export default {
         slideInRight: {
           from: { transform: 'translateX(100%)' },
           to: { transform: 'translateX(0)' },
+        },
+        slideUp: {
+          from: { transform: 'translateY(100%)' },
+          to: { transform: 'translateY(0)' },
         },
       },
       fontFamily: {

@@ -43,6 +43,19 @@ const SiteEngineerDashboard = React.lazy(() =>
 const TasksPage = React.lazy(() => import('@/pages/TasksPage').then(m => ({ default: m.TasksPage })));
 const DocumentsPage = React.lazy(() => import('@/pages/DocumentsPage').then(m => ({ default: m.DocumentsPage })));
 
+// Dashboard & Report Builder
+const DashboardBuilderPage = React.lazy(() =>
+  import('@/pages/DashboardBuilderPage').then(m => ({ default: m.DashboardBuilderPage })),
+);
+const ReportBuilderPage = React.lazy(() =>
+  import('@/pages/ReportBuilderPage').then(m => ({ default: m.ReportBuilderPage })),
+);
+
+// Workflow Builder (parametric route)
+const WorkflowBuilderPage = React.lazy(() =>
+  import('@/pages/WorkflowBuilderPage').then(m => ({ default: m.WorkflowBuilderPage })),
+);
+
 // Section Landing Pages
 const InventorySectionPage = React.lazy(() =>
   import('@/pages/sections/InventorySectionPage').then(m => ({ default: m.InventorySectionPage })),
@@ -102,6 +115,9 @@ export const AppRouteDefinitions: React.FC<{ currentRole: UserRole }> = ({ curre
     <Route path="/admin/logistics" element={<LogisticsSectionPage />} />
     <Route path="/admin/master" element={<MasterDataSectionPage />} />
     <Route path="/admin/system" element={<AdminSystemPage />} />
+    <Route path="/admin/system/workflows/:workflowId" element={<WorkflowBuilderPage />} />
+    <Route path="/admin/system/dashboards" element={<DashboardBuilderPage />} />
+    <Route path="/admin/system/reports" element={<ReportBuilderPage />} />
 
     {/* LEGACY REDIRECTS */}
     <Route path="/admin/warehouse/mrrv" element={<Navigate to="/admin/receiving?tab=mrrv" replace />} />

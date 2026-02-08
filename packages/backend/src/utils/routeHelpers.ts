@@ -3,6 +3,7 @@ import type { Server as SocketIOServer } from 'socket.io';
 import { emitToDocument, emitToAll } from '../socket/setup.js';
 import { createAuditLog, type AuditEntry } from '../services/audit.service.js';
 import { clientIp } from './helpers.js';
+import { eventBus } from '../events/event-bus.js';
 
 /**
  * Emit standardized socket events for a document status change.
@@ -90,4 +91,16 @@ export async function auditAndEmit(
   if (params.entityEvent && params.entityName) {
     emitToAll(io, `entity:${params.entityEvent}`, { entity: params.entityName });
   }
+
+  // Publish to system event bus (consumed by workflow rule engine)
+  const eventType = params.socketEvent ? `document:status_changed` : `document:${params.action}`;
+  eventBus.publish({
+    type: eventType,
+    entityType: params.docType || params.tableName,
+    entityId: params.recordId,
+    action: params.action,
+    payload: { oldValues: params.oldValues, newValues: params.newValues, ...params.socketData },
+    performedById: req.user!.userId,
+    timestamp: new Date().toISOString(),
+  });
 }

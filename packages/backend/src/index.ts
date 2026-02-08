@@ -32,6 +32,16 @@ import permissionsRoutes from './routes/permissions.routes.js';
 import taskRoutes from './routes/task.routes.js';
 import companyDocumentRoutes from './routes/company-document.routes.js';
 import reportsRoutes from './routes/reports.routes.js';
+import barcodeRoutes from './routes/barcode.routes.js';
+import workflowRoutes from './routes/workflow.routes.js';
+import workflowRuleRoutes from './routes/workflow-rule.routes.js';
+import { startRuleEngine } from './events/rule-engine.js';
+import widgetDataRoutes from './routes/widget-data.routes.js';
+import dashboardBuilderRoutes from './routes/dashboard-builder.routes.js';
+import savedReportRoutes from './routes/saved-report.routes.js';
+import emailTemplateRoutes from './routes/email-template.routes.js';
+import emailLogRoutes from './routes/email-log.routes.js';
+import emailWebhookRoutes from './routes/email-webhook.routes.js';
 
 dotenv.config({ path: '../../.env' });
 
@@ -75,6 +85,15 @@ app.use('/api/permissions', permissionsRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/documents', companyDocumentRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/barcodes', barcodeRoutes);
+app.use('/api/workflows', workflowRoutes);
+app.use('/api/workflows/:workflowId/rules', workflowRuleRoutes);
+app.use('/api/widget-data', widgetDataRoutes);
+app.use('/api/dashboards', dashboardBuilderRoutes);
+app.use('/api/reports/saved', savedReportRoutes);
+app.use('/api/email-templates', emailTemplateRoutes);
+app.use('/api/email-logs', emailLogRoutes);
+app.use('/api/webhooks', emailWebhookRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static(join(dirname(fileURLToPath(import.meta.url)), '../uploads')));
@@ -103,6 +122,9 @@ const PORT = parseInt(process.env.PORT || '4000', 10);
 
 httpServer.listen(PORT, () => {
   logger.info({ port: PORT, env: process.env.NODE_ENV || 'development' }, 'NIT Logistics Backend Server started');
+
+  // Start the workflow rule engine after server is listening
+  startRuleEngine();
 });
 
 // ── Graceful Shutdown ────────────────────────────────────────────────

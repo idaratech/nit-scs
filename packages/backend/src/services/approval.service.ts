@@ -3,6 +3,7 @@ import { prisma } from '../utils/prisma.js';
 import { createAuditLog } from './audit.service.js';
 import { emitToRole, emitToDocument } from '../socket/setup.js';
 import { log } from '../config/logger.js';
+import { eventBus } from '../events/event-bus.js';
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -13,18 +14,12 @@ export interface RequiredApproval {
 
 // ── Lookup required approval level ──────────────────────────────────────
 
-export async function getRequiredApproval(
-  documentType: string,
-  amount: number,
-): Promise<RequiredApproval | null> {
+export async function getRequiredApproval(documentType: string, amount: number): Promise<RequiredApproval | null> {
   const workflow = await prisma.approvalWorkflow.findFirst({
     where: {
       documentType,
       minAmount: { lte: amount },
-      OR: [
-        { maxAmount: null },
-        { maxAmount: { gte: amount } },
-      ],
+      OR: [{ maxAmount: null }, { maxAmount: { gte: amount } }],
     },
     orderBy: { minAmount: 'desc' },
   });
@@ -101,6 +96,16 @@ export async function submitForApproval(params: {
 
   log('info', `[Approval] ${documentType} ${documentId} submitted for approval (role: ${approval.approverRole})`);
 
+  eventBus.publish({
+    type: 'approval:requested',
+    entityType: documentType,
+    entityId: documentId,
+    action: 'submit_for_approval',
+    payload: { amount, approverRole: approval.approverRole, slaDueDate: slaDueDate.toISOString() },
+    performedById: submittedById,
+    timestamp: new Date().toISOString(),
+  });
+
   return approval;
 }
 
@@ -151,6 +156,16 @@ export async function processApproval(params: {
     }
 
     log('info', `[Approval] ${documentType} ${documentId} approved by ${processedById}`);
+
+    eventBus.publish({
+      type: 'approval:approved',
+      entityType: documentType,
+      entityId: documentId,
+      action: 'approve',
+      payload: { approvedById: processedById, comments },
+      performedById: processedById,
+      timestamp: new Date().toISOString(),
+    });
   } else {
     await delegate.update({
       where: { id: documentId },
@@ -181,6 +196,16 @@ export async function processApproval(params: {
     }
 
     log('info', `[Approval] ${documentType} ${documentId} rejected by ${processedById}`);
+
+    eventBus.publish({
+      type: 'approval:rejected',
+      entityType: documentType,
+      entityId: documentId,
+      action: 'reject',
+      payload: { rejectedById: processedById, reason: comments },
+      performedById: processedById,
+      timestamp: new Date().toISOString(),
+    });
   }
 }
 

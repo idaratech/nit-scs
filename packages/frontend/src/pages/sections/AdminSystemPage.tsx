@@ -1,22 +1,21 @@
 import React, { Suspense } from 'react';
-import { Shield, FileText, Settings as SettingsIcon, BarChart3 } from 'lucide-react';
+import { Shield, Settings as SettingsIcon, Zap, Mail } from 'lucide-react';
 import { SectionLandingPage } from '@/components/SectionLandingPage';
 import type { KpiCardProps } from '@/components/KpiCard';
 import type { TabDef } from '@/components/SectionTabBar';
 
 // Lazy-load embedded page components
-const RolesPage = React.lazy(() =>
-  import('@/pages/RolesPage').then(m => ({ default: m.RolesPage }))
+const RolesPage = React.lazy(() => import('@/pages/RolesPage').then(m => ({ default: m.RolesPage })));
+const AuditLogPage = React.lazy(() => import('@/pages/AuditLogPage').then(m => ({ default: m.AuditLogPage })));
+const SettingsPage = React.lazy(() => import('@/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const ReportsPage = React.lazy(() => import('@/pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const WorkflowListPage = React.lazy(() =>
+  import('@/pages/WorkflowListPage').then(m => ({ default: m.WorkflowListPage })),
 );
-const AuditLogPage = React.lazy(() =>
-  import('@/pages/AuditLogPage').then(m => ({ default: m.AuditLogPage }))
+const EmailTemplatesPage = React.lazy(() =>
+  import('@/pages/EmailTemplatesPage').then(m => ({ default: m.EmailTemplatesPage })),
 );
-const SettingsPage = React.lazy(() =>
-  import('@/pages/SettingsPage').then(m => ({ default: m.SettingsPage }))
-);
-const ReportsPage = React.lazy(() =>
-  import('@/pages/ReportsPage').then(m => ({ default: m.ReportsPage }))
-);
+const EmailLogsPage = React.lazy(() => import('@/pages/EmailLogsPage').then(m => ({ default: m.EmailLogsPage })));
 
 const Spinner: React.FC = () => (
   <div className="flex items-center justify-center py-20">
@@ -33,9 +32,15 @@ const kpis: KpiCardProps[] = [
     sublabel: 'RBAC Roles',
   },
   {
-    title: 'Audit Events',
-    value: 'View Log',
-    icon: FileText,
+    title: 'Workflows',
+    value: 'Automate',
+    icon: Zap,
+    color: 'bg-amber-500',
+  },
+  {
+    title: 'Email Templates',
+    value: 'Configure',
+    icon: Mail,
     color: 'bg-blue-500',
   },
   {
@@ -44,12 +49,6 @@ const kpis: KpiCardProps[] = [
     icon: SettingsIcon,
     color: 'bg-emerald-500',
   },
-  {
-    title: 'Reports',
-    value: 'Generate',
-    icon: BarChart3,
-    color: 'bg-amber-500',
-  },
 ];
 
 const tabs: TabDef[] = [
@@ -57,6 +56,9 @@ const tabs: TabDef[] = [
   { key: 'audit', label: 'Audit Log' },
   { key: 'settings', label: 'Settings' },
   { key: 'reports', label: 'Reports' },
+  { key: 'workflows', label: 'Workflows' },
+  { key: 'email-templates', label: 'Email Templates' },
+  { key: 'email-logs', label: 'Email Logs' },
 ];
 
 export const AdminSystemPage: React.FC = () => {
@@ -86,6 +88,21 @@ export const AdminSystemPage: React.FC = () => {
         reports: (
           <Suspense fallback={<Spinner />}>
             <ReportsPage />
+          </Suspense>
+        ),
+        workflows: (
+          <Suspense fallback={<Spinner />}>
+            <WorkflowListPage />
+          </Suspense>
+        ),
+        'email-templates': (
+          <Suspense fallback={<Spinner />}>
+            <EmailTemplatesPage />
+          </Suspense>
+        ),
+        'email-logs': (
+          <Suspense fallback={<Spinner />}>
+            <EmailLogsPage />
           </Suspense>
         ),
       }}

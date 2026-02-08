@@ -4,6 +4,8 @@ import { UserRole } from '@nit-scs/shared/types';
 import type { User } from '@nit-scs/shared/types';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
+import { PwaInstallPrompt } from '@/components/PwaInstallPrompt';
+import { PwaUpdatePrompt } from '@/components/PwaUpdatePrompt';
 import { useRealtimeSync } from '@/socket/useRealtimeSync';
 import { useCurrentUser } from '@/api/hooks/useAuth';
 
@@ -93,6 +95,9 @@ export const MainLayout: React.FC<{
           <div className="relative z-10 min-h-full pb-10">{children}</div>
         </main>
       </div>
+
+      <PwaInstallPrompt />
+      <PwaUpdatePrompt />
     </div>
   );
 };
