@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: nit-wms-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nit_wms
+      POSTGRES_USER: nit_admin
+      POSTGRES_PASSWORD: nit_wms_dev_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nit_admin -d nit_wms"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

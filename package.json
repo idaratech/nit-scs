@@ -1,0 +1,33 @@
+{
+  "name": "nit-wms",
+  "private": true,
+  "version": "1.0.0",
+  "description": "NIT Logistics - Supply Chain Management System - Full Stack Monorepo",
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "dev:backend": "pnpm --filter @nit-wms/backend dev",
+    "dev:frontend": "pnpm --filter @nit-wms/frontend dev",
+    "build": "pnpm -r run build",
+    "build:shared": "pnpm --filter @nit-wms/shared build",
+    "build:backend": "pnpm --filter @nit-wms/backend build",
+    "build:frontend": "pnpm --filter @nit-wms/frontend build",
+    "db:migrate": "pnpm --filter @nit-wms/backend prisma:migrate",
+    "db:push": "pnpm --filter @nit-wms/backend prisma:push",
+    "db:seed": "pnpm --filter @nit-wms/backend prisma:seed",
+    "db:studio": "pnpm --filter @nit-wms/backend prisma:studio",
+    "lint": "pnpm -r run lint",
+    "clean": "pnpm -r run clean && rm -rf node_modules"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma"
+    ]
+  }
+}
