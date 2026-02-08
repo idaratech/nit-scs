@@ -21,23 +21,16 @@ RUN pnpm --filter @nit-scs/backend build
 
 # ── Stage 3: Production runtime ──
 FROM node:20-alpine AS runtime
-RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
-# Copy package files for production install
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY packages/shared/package.json packages/shared/
-COPY packages/backend/package.json packages/backend/
-COPY packages/frontend/package.json packages/frontend/
-
-# Install production dependencies only
-RUN pnpm install --frozen-lockfile --prod
-
-# Copy built outputs
+# Copy everything needed from the build stage
+COPY --from=build /app/node_modules node_modules
 COPY --from=build /app/packages/shared/dist packages/shared/dist
+COPY --from=build /app/packages/shared/package.json packages/shared/package.json
 COPY --from=build /app/packages/backend/dist packages/backend/dist
 COPY --from=build /app/packages/backend/prisma packages/backend/prisma
-COPY --from=build /app/packages/backend/node_modules/.prisma packages/backend/node_modules/.prisma
+COPY --from=build /app/packages/backend/package.json packages/backend/package.json
+COPY --from=build /app/packages/backend/node_modules packages/backend/node_modules
 COPY --from=build /app/packages/frontend/dist packages/frontend/dist
 
 # Copy data directory for settings
