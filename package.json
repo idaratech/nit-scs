@@ -44,11 +44,14 @@
     "@commitlint/cli": "^20.4.1",
     "@commitlint/config-conventional": "^20.4.1",
     "@eslint/js": "^10.0.1",
+    "@faker-js/faker": "^10.3.0",
+    "@types/supertest": "^6.0.3",
     "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "prettier": "^3.8.1",
+    "supertest": "^7.2.2",
     "typescript-eslint": "^8.54.0",
     "vitest": "^4.0.18"
   }

@@ -31,7 +31,11 @@ export function validateMRRV(data: Record<string, unknown>, lineItems: VoucherLi
   if (data.date) {
     const daysDiff = Math.floor((Date.now() - new Date(data.date as string).getTime()) / (1000 * 60 * 60 * 24));
     if (daysDiff > 7) {
-      warnings.push({ field: 'date', rule: 'MRRV-V002', message: `Receipt date is ${daysDiff} days old — requires supervisor approval` });
+      warnings.push({
+        field: 'date',
+        rule: 'MRRV-V002',
+        message: `Receipt date is ${daysDiff} days old — requires supervisor approval`,
+      });
     }
   }
 
@@ -164,9 +168,97 @@ export function validateJO(data: Record<string, unknown>): ValidationResult {
   return { valid: errors.length === 0, errors, warnings };
 }
 
+// ── RFIM Validators ─────────────────────────────────────────────────────
+
+export function validateRFIM(data: Record<string, unknown>): ValidationResult {
+  const errors: ValidationError[] = [];
+  const warnings: ValidationWarning[] = [];
+
+  if (!data.mrrvId || !(data.mrrvId as string).trim()) {
+    errors.push({ field: 'mrrvId', rule: 'RFIM-V001', message: 'MRRV Reference is required' });
+  }
+
+  if (!data.inspectionType || !(data.inspectionType as string).trim()) {
+    errors.push({ field: 'inspectionType', rule: 'RFIM-V002', message: 'Inspection type is required' });
+  }
+
+  if (!data.priority || !(data.priority as string).trim()) {
+    errors.push({ field: 'priority', rule: 'RFIM-V003', message: 'Priority is required' });
+  }
+
+  if (!data.itemsDescription || !(data.itemsDescription as string).trim()) {
+    errors.push({ field: 'itemsDescription', rule: 'RFIM-V004', message: 'Items description is required' });
+  }
+
+  if (
+    data.inspectionDate &&
+    new Date(data.inspectionDate as string) < new Date(new Date().toISOString().split('T')[0])
+  ) {
+    warnings.push({ field: 'inspectionDate', rule: 'RFIM-V005', message: 'Inspection date is in the past' });
+  }
+
+  if (data.priority === 'Critical') {
+    warnings.push({
+      field: 'priority',
+      rule: 'RFIM-V006',
+      message: 'Critical priority inspections require QC Manager approval',
+    });
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+// ── OSD Validators ──────────────────────────────────────────────────────
+
+export function validateOSD(data: Record<string, unknown>): ValidationResult {
+  const errors: ValidationError[] = [];
+  const warnings: ValidationWarning[] = [];
+
+  if (!data.mrrvId || !(data.mrrvId as string).trim()) {
+    errors.push({ field: 'mrrvId', rule: 'OSD-V001', message: 'MRRV Reference is required' });
+  }
+
+  if (!data.reportType || !(data.reportType as string).trim()) {
+    errors.push({ field: 'reportType', rule: 'OSD-V002', message: 'Issue type is required' });
+  }
+
+  if (!data.qtyAffected || Number(data.qtyAffected) <= 0) {
+    errors.push({ field: 'qtyAffected', rule: 'OSD-V003', message: 'Quantity affected must be greater than zero' });
+  }
+
+  if (!data.description || !(data.description as string).trim()) {
+    errors.push({ field: 'description', rule: 'OSD-V004', message: 'Description is required' });
+  }
+
+  if (!data.actionRequired || !(data.actionRequired as string).trim()) {
+    errors.push({ field: 'actionRequired', rule: 'OSD-V005', message: 'Required action must be specified' });
+  }
+
+  if (data.reportType === 'Damage' && !data.attachments) {
+    warnings.push({
+      field: 'attachments',
+      rule: 'OSD-V006',
+      message: 'Photographic evidence is recommended for damage reports',
+    });
+  }
+
+  if (data.actionRequired === 'Claim Insurance') {
+    warnings.push({
+      field: 'actionRequired',
+      rule: 'OSD-V007',
+      message: 'Insurance claims require supporting documentation and photos',
+    });
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
 // ── Generic ─────────────────────────────────────────────────────────────
 
-export function validateRequired(data: Record<string, unknown>, fields: { key: string; label: string }[]): ValidationError[] {
+export function validateRequired(
+  data: Record<string, unknown>,
+  fields: { key: string; label: string }[],
+): ValidationError[] {
   return fields
     .filter(f => !data[f.key] || (typeof data[f.key] === 'string' && !(data[f.key] as string).trim()))
     .map(f => ({ field: f.key, rule: 'REQUIRED', message: `${f.label} is required` }));
