@@ -1,3 +1,6 @@
+// Sentry must be imported before all other modules to properly instrument them
+import { Sentry } from './config/sentry.js';
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -76,6 +79,11 @@ app.use('/api', (req, res, _next) => {
 // ── Socket.IO ─────────────────────────────────────────────────────────────
 setupSocketIO(io);
 app.set('io', io); // Accessible via req.app.get('io')
+
+// ── Sentry Error Handler (captures errors before our handler) ─────────────
+if (Sentry.isInitialized()) {
+  Sentry.setupExpressErrorHandler(app);
+}
 
 // ── Error Handler (must be last middleware) ────────────────────────────────
 app.use(errorHandler);

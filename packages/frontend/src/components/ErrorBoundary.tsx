@@ -1,4 +1,5 @@
 import React from 'react';
+import * as Sentry from '@sentry/react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface ErrorBoundaryState {
@@ -6,10 +7,7 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-export class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  ErrorBoundaryState
-> {
+export class ErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -17,6 +15,10 @@ export class ErrorBoundary extends React.Component<
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
   }
 
   handleReset = () => {
@@ -32,9 +34,7 @@ export class ErrorBoundary extends React.Component<
               <AlertTriangle size={32} />
             </div>
             <h1 className="text-2xl font-bold mb-2">Something went wrong</h1>
-            <p className="text-gray-400 mb-6 text-sm">
-              {this.state.error?.message || 'An unexpected error occurred'}
-            </p>
+            <p className="text-gray-400 mb-6 text-sm">{this.state.error?.message || 'An unexpected error occurred'}</p>
             <div className="flex gap-3 justify-center">
               <button
                 onClick={this.handleReset}

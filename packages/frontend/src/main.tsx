@@ -1,3 +1,6 @@
+// Sentry must be imported before other app modules
+import './config/sentry';
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
