@@ -213,7 +213,7 @@ async function main() {
   const passwordHash = await bcrypt.hash(seedPassword, 12);
   const admin = await prisma.employee.upsert({
     where: { email: 'admin@nit.sa' },
-    update: {},
+    update: { passwordHash },
     create: {
       employeeIdNumber: 'EMP-001',
       fullName: 'System Administrator',

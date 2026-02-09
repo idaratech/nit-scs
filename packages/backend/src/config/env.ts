@@ -45,10 +45,10 @@ export function getEnv(): Env {
       // Development/test fallback
       console.warn('⚠  Using development fallback environment — DO NOT use in production');
       _env = envSchema.parse({
-        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://nit_admin:nit_scs_dev_2026@localhost:5432/nit_scs',
-        JWT_SECRET: process.env.JWT_SECRET || DEV_JWT_SECRET,
-        JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || DEV_JWT_REFRESH,
         ...process.env,
+        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://nit_admin:nit_scs_dev_2026@localhost:5432/nit_scs',
+        JWT_SECRET: DEV_JWT_SECRET,
+        JWT_REFRESH_SECRET: DEV_JWT_REFRESH,
       });
 
       return _env;
