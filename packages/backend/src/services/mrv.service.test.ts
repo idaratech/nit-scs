@@ -7,7 +7,7 @@ const { mockPrisma } = vi.hoisted(() => {
 // ── mocks ────────────────────────────────────────────────────────────
 vi.mock('../utils/prisma.js', () => ({ prisma: mockPrisma }));
 vi.mock('./document-number.service.js', () => ({ generateDocumentNumber: vi.fn() }));
-vi.mock('./inventory.service.js', () => ({ addStock: vi.fn() }));
+vi.mock('./inventory.service.js', () => ({ addStockBatch: vi.fn() }));
 vi.mock('../config/logger.js', () => ({ log: vi.fn() }));
 vi.mock('@nit-scs/shared', async importOriginal => {
   const actual = await importOriginal<typeof import('@nit-scs/shared')>();
@@ -17,11 +17,11 @@ vi.mock('@nit-scs/shared', async importOriginal => {
 import { createPrismaMock } from '../test-utils/prisma-mock.js';
 import { list, getById, create, update, submit, receive, complete } from './mrv.service.js';
 import { generateDocumentNumber } from './document-number.service.js';
-import { addStock } from './inventory.service.js';
+import { addStockBatch } from './inventory.service.js';
 import { NotFoundError, BusinessRuleError, assertTransition } from '@nit-scs/shared';
 
 const mockedGenDoc = generateDocumentNumber as ReturnType<typeof vi.fn>;
-const mockedAddStock = addStock as ReturnType<typeof vi.fn>;
+const mockedAddStockBatch = addStockBatch as ReturnType<typeof vi.fn>;
 const mockedAssertTransition = assertTransition as ReturnType<typeof vi.fn>;
 
 // ── helpers ──────────────────────────────────────────────────────────
@@ -266,19 +266,25 @@ describe('complete', () => {
     const result = await complete(MRV_ID, USER_ID);
 
     expect(assertTransition).toHaveBeenCalledWith('mrv', 'received', 'completed');
-    expect(addStock).toHaveBeenCalledTimes(2);
-    expect(addStock).toHaveBeenCalledWith({
-      itemId: 'item-1',
-      warehouseId: 'wh-1',
-      qty: 5,
-      performedById: USER_ID,
-    });
-    expect(addStock).toHaveBeenCalledWith({
-      itemId: 'item-3',
-      warehouseId: 'wh-1',
-      qty: 2,
-      performedById: USER_ID,
-    });
+    expect(addStockBatch).toHaveBeenCalledTimes(1);
+    const batchArg = mockedAddStockBatch.mock.calls[0][0];
+    expect(batchArg).toHaveLength(2);
+    expect(batchArg[0]).toEqual(
+      expect.objectContaining({
+        itemId: 'item-1',
+        warehouseId: 'wh-1',
+        qty: 5,
+        performedById: USER_ID,
+      }),
+    );
+    expect(batchArg[1]).toEqual(
+      expect.objectContaining({
+        itemId: 'item-3',
+        warehouseId: 'wh-1',
+        qty: 2,
+        performedById: USER_ID,
+      }),
+    );
     expect(result).toEqual({
       id: MRV_ID,
       toWarehouseId: 'wh-1',
@@ -287,15 +293,16 @@ describe('complete', () => {
     });
   });
 
-  it('does not call addStock when there are no good-condition lines', async () => {
+  it('calls addStockBatch with empty array when there are no good-condition lines', async () => {
     const lines = [{ id: 'l1', itemId: 'item-1', qtyReturned: 5, condition: 'damaged' }];
     const mrv = makeMrv({ status: 'received', mrvLines: lines });
     mockPrisma.mrv.findUnique.mockResolvedValue(mrv);
     mockPrisma.mrv.update.mockResolvedValue({ ...mrv, status: 'completed' });
+    mockedAddStockBatch.mockResolvedValue(undefined);
 
     const result = await complete(MRV_ID, USER_ID);
 
-    expect(addStock).not.toHaveBeenCalled();
+    expect(addStockBatch).toHaveBeenCalledWith([]);
     expect(result.goodLinesRestocked).toBe(0);
     expect(result.totalLines).toBe(1);
   });
@@ -314,6 +321,6 @@ describe('complete', () => {
     });
 
     await expect(complete(MRV_ID, USER_ID)).rejects.toThrow('Invalid transition');
-    expect(addStock).not.toHaveBeenCalled();
+    expect(addStockBatch).not.toHaveBeenCalled();
   });
 });

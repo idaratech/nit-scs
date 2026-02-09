@@ -1,7 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../utils/prisma.js';
 import { generateDocumentNumber } from './document-number.service.js';
-import { addStock } from './inventory.service.js';
+import { addStockBatch } from './inventory.service.js';
 import { NotFoundError, BusinessRuleError } from '@nit-scs/shared';
 import { assertTransition } from '@nit-scs/shared';
 import type { MrrvCreateDto, MrrvUpdateDto, MrrvLineDto, ListParams } from '../types/dto.js';
@@ -248,21 +248,20 @@ export async function store(id: string, userId: string) {
     data: { status: 'stored' },
   });
 
-  for (const line of mrrv.mrrvLines) {
-    const qtyToStore = Number(line.qtyReceived) - Number(line.qtyDamaged ?? 0);
-    if (qtyToStore > 0) {
-      await addStock({
-        itemId: line.itemId,
-        warehouseId: mrrv.warehouseId,
-        qty: qtyToStore,
-        unitCost: line.unitCost ? Number(line.unitCost) : undefined,
-        supplierId: mrrv.supplierId,
-        mrrvLineId: line.id,
-        expiryDate: line.expiryDate ?? undefined,
-        performedById: userId,
-      });
-    }
-  }
+  const stockItems = mrrv.mrrvLines
+    .map(line => ({
+      itemId: line.itemId,
+      warehouseId: mrrv.warehouseId,
+      qty: Number(line.qtyReceived) - Number(line.qtyDamaged ?? 0),
+      unitCost: line.unitCost ? Number(line.unitCost) : undefined,
+      supplierId: mrrv.supplierId,
+      mrrvLineId: line.id,
+      expiryDate: line.expiryDate ?? undefined,
+      performedById: userId,
+    }))
+    .filter(item => item.qty > 0);
+
+  await addStockBatch(stockItems);
 
   return { id: mrrv.id, warehouseId: mrrv.warehouseId, linesStored: mrrv.mrrvLines.length };
 }

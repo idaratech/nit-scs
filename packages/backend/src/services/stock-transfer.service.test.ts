@@ -7,7 +7,7 @@ const { mockPrisma } = vi.hoisted(() => {
 // ── mocks ────────────────────────────────────────────────────────────
 vi.mock('../utils/prisma.js', () => ({ prisma: mockPrisma }));
 vi.mock('./document-number.service.js', () => ({ generateDocumentNumber: vi.fn() }));
-vi.mock('./inventory.service.js', () => ({ addStock: vi.fn(), deductStock: vi.fn() }));
+vi.mock('./inventory.service.js', () => ({ addStockBatch: vi.fn(), deductStockBatch: vi.fn() }));
 vi.mock('../config/logger.js', () => ({ log: vi.fn() }));
 vi.mock('@nit-scs/shared', async importOriginal => {
   const actual = await importOriginal<typeof import('@nit-scs/shared')>();
@@ -28,12 +28,12 @@ import {
   cancel,
 } from './stock-transfer.service.js';
 import { generateDocumentNumber } from './document-number.service.js';
-import { addStock, deductStock } from './inventory.service.js';
+import { addStockBatch, deductStockBatch } from './inventory.service.js';
 import { NotFoundError, BusinessRuleError, assertTransition } from '@nit-scs/shared';
 
 const mockedGenDoc = generateDocumentNumber as ReturnType<typeof vi.fn>;
-const mockedAddStock = addStock as ReturnType<typeof vi.fn>;
-const mockedDeductStock = deductStock as ReturnType<typeof vi.fn>;
+const mockedAddStockBatch = addStockBatch as ReturnType<typeof vi.fn>;
+const mockedDeductStockBatch = deductStockBatch as ReturnType<typeof vi.fn>;
 const mockedAssertTransition = assertTransition as ReturnType<typeof vi.fn>;
 
 // ── helpers ──────────────────────────────────────────────────────────
@@ -281,7 +281,7 @@ describe('approve', () => {
 
 // ── ship ─────────────────────────────────────────────────────────────
 describe('ship', () => {
-  it('deducts stock for each line and transitions to shipped', async () => {
+  it('deducts stock via batch call and transitions to shipped', async () => {
     const lines = makeLines();
     const st = makeStockTransfer({ status: 'approved', stockTransferLines: lines });
     mockPrisma.stockTransfer.findUnique.mockResolvedValue(st);
@@ -290,15 +290,21 @@ describe('ship', () => {
     const result = await ship(ST_ID);
 
     expect(assertTransition).toHaveBeenCalledWith('stock_transfer', 'approved', 'shipped');
-    expect(deductStock).toHaveBeenCalledTimes(2);
-    expect(deductStock).toHaveBeenCalledWith('item-1', 'wh-from', 10, {
-      referenceType: 'stock_transfer_line',
-      referenceId: 'line-1',
-    });
-    expect(deductStock).toHaveBeenCalledWith('item-2', 'wh-from', 5, {
-      referenceType: 'stock_transfer_line',
-      referenceId: 'line-2',
-    });
+    expect(deductStockBatch).toHaveBeenCalledTimes(1);
+    expect(deductStockBatch).toHaveBeenCalledWith([
+      {
+        itemId: 'item-1',
+        warehouseId: 'wh-from',
+        qty: 10,
+        ref: { referenceType: 'stock_transfer_line', referenceId: 'line-1' },
+      },
+      {
+        itemId: 'item-2',
+        warehouseId: 'wh-from',
+        qty: 5,
+        ref: { referenceType: 'stock_transfer_line', referenceId: 'line-2' },
+      },
+    ]);
     expect(mockPrisma.stockTransfer.update).toHaveBeenCalledWith({
       where: { id: ST_ID },
       data: expect.objectContaining({
@@ -323,13 +329,13 @@ describe('ship', () => {
     });
 
     await expect(ship(ST_ID)).rejects.toThrow('Invalid transition');
-    expect(deductStock).not.toHaveBeenCalled();
+    expect(deductStockBatch).not.toHaveBeenCalled();
   });
 });
 
 // ── receive ──────────────────────────────────────────────────────────
 describe('receive', () => {
-  it('adds stock for each line and transitions to received', async () => {
+  it('adds stock via batch call and transitions to received', async () => {
     const lines = makeLines();
     const st = makeStockTransfer({ status: 'shipped', stockTransferLines: lines });
     mockPrisma.stockTransfer.findUnique.mockResolvedValue(st);
@@ -338,19 +344,11 @@ describe('receive', () => {
     const result = await receive(ST_ID, USER_ID);
 
     expect(assertTransition).toHaveBeenCalledWith('stock_transfer', 'shipped', 'received');
-    expect(addStock).toHaveBeenCalledTimes(2);
-    expect(addStock).toHaveBeenCalledWith({
-      itemId: 'item-1',
-      warehouseId: 'wh-to',
-      qty: 10,
-      performedById: USER_ID,
-    });
-    expect(addStock).toHaveBeenCalledWith({
-      itemId: 'item-2',
-      warehouseId: 'wh-to',
-      qty: 5,
-      performedById: USER_ID,
-    });
+    expect(addStockBatch).toHaveBeenCalledTimes(1);
+    expect(addStockBatch).toHaveBeenCalledWith([
+      { itemId: 'item-1', warehouseId: 'wh-to', qty: 10, performedById: USER_ID },
+      { itemId: 'item-2', warehouseId: 'wh-to', qty: 5, performedById: USER_ID },
+    ]);
     expect(mockPrisma.stockTransfer.update).toHaveBeenCalledWith({
       where: { id: ST_ID },
       data: expect.objectContaining({
@@ -375,7 +373,7 @@ describe('receive', () => {
     });
 
     await expect(receive(ST_ID, USER_ID)).rejects.toThrow('Invalid transition');
-    expect(addStock).not.toHaveBeenCalled();
+    expect(addStockBatch).not.toHaveBeenCalled();
   });
 });
 

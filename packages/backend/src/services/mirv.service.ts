@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../utils/prisma.js';
 import { generateDocumentNumber } from './document-number.service.js';
 import { submitForApproval, processApproval } from './approval.service.js';
-import { reserveStock, consumeReservation, releaseReservation } from './inventory.service.js';
+import { reserveStockBatch, consumeReservationBatch, releaseReservation } from './inventory.service.js';
 import { NotFoundError, BusinessRuleError } from '@nit-scs/shared';
 import { assertTransition } from '@nit-scs/shared';
 import type { Server as SocketIOServer } from 'socket.io';
@@ -172,15 +172,23 @@ export async function approve(
   });
 
   if (action === 'approve') {
-    let allReserved = true;
-    for (const line of mirv.mirvLines) {
-      const reserved = await reserveStock(line.itemId, mirv.warehouseId, Number(line.qtyRequested));
-      if (!reserved) allReserved = false;
-      await prisma.mirvLine.update({
-        where: { id: line.id },
-        data: { qtyApproved: line.qtyRequested },
-      });
-    }
+    const reserveItems = mirv.mirvLines.map(line => ({
+      itemId: line.itemId,
+      warehouseId: mirv.warehouseId,
+      qty: Number(line.qtyRequested),
+    }));
+    const { success: allReserved } = await reserveStockBatch(reserveItems);
+
+    // Update all line approvals
+    await Promise.all(
+      mirv.mirvLines.map(line =>
+        prisma.mirvLine.update({
+          where: { id: line.id },
+          data: { qtyApproved: line.qtyRequested },
+        }),
+      ),
+    );
+
     await prisma.mirv.update({
       where: { id: mirv.id },
       data: { reservationStatus: allReserved ? 'reserved' : 'none' },
@@ -205,19 +213,28 @@ export async function issue(id: string, userId: string) {
     throw new BusinessRuleError('MIRV must be approved or partially issued to issue materials');
   }
 
-  let totalCost = 0;
-  for (const line of mirv.mirvLines) {
-    const qtyToIssue = Number(line.qtyApproved ?? line.qtyRequested);
-    const result = await consumeReservation(line.itemId, mirv.warehouseId, qtyToIssue, line.id);
-    totalCost += result.totalCost;
-    await prisma.mirvLine.update({
-      where: { id: line.id },
-      data: {
-        qtyIssued: qtyToIssue,
-        unitCost: qtyToIssue > 0 ? result.totalCost / qtyToIssue : 0,
-      },
-    });
-  }
+  const consumeItems = mirv.mirvLines.map(line => ({
+    itemId: line.itemId,
+    warehouseId: mirv.warehouseId,
+    qty: Number(line.qtyApproved ?? line.qtyRequested),
+    mirvLineId: line.id,
+  }));
+  const { totalCost, lineCosts } = await consumeReservationBatch(consumeItems);
+
+  // Update line costs from batch result
+  await Promise.all(
+    mirv.mirvLines.map(line => {
+      const qtyToIssue = Number(line.qtyApproved ?? line.qtyRequested);
+      const cost = lineCosts.get(line.id) ?? 0;
+      return prisma.mirvLine.update({
+        where: { id: line.id },
+        data: {
+          qtyIssued: qtyToIssue,
+          unitCost: qtyToIssue > 0 ? cost / qtyToIssue : 0,
+        },
+      });
+    }),
+  );
 
   await prisma.mirv.update({
     where: { id: mirv.id },

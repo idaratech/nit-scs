@@ -10,8 +10,8 @@ vi.mock('../utils/prisma.js', () => ({ prisma: mockPrisma }));
 vi.mock('./document-number.service.js', () => ({ generateDocumentNumber: vi.fn() }));
 vi.mock('./approval.service.js', () => ({ submitForApproval: vi.fn(), processApproval: vi.fn() }));
 vi.mock('./inventory.service.js', () => ({
-  reserveStock: vi.fn(),
-  consumeReservation: vi.fn(),
+  reserveStockBatch: vi.fn(),
+  consumeReservationBatch: vi.fn(),
   releaseReservation: vi.fn(),
 }));
 vi.mock('../config/logger.js', () => ({ log: vi.fn() }));
@@ -25,14 +25,14 @@ import { createPrismaMock } from '../test-utils/prisma-mock.js';
 import { list, getById, create, update, submit, approve, issue, cancel } from './mirv.service.js';
 import { generateDocumentNumber } from './document-number.service.js';
 import { submitForApproval, processApproval } from './approval.service.js';
-import { reserveStock, consumeReservation, releaseReservation } from './inventory.service.js';
+import { reserveStockBatch, consumeReservationBatch, releaseReservation } from './inventory.service.js';
 import { assertTransition } from '@nit-scs/shared';
 
 const mockedGenerateDocNumber = generateDocumentNumber as ReturnType<typeof vi.fn>;
 const mockedSubmitForApproval = submitForApproval as ReturnType<typeof vi.fn>;
 const mockedProcessApproval = processApproval as ReturnType<typeof vi.fn>;
-const mockedReserveStock = reserveStock as ReturnType<typeof vi.fn>;
-const mockedConsumeReservation = consumeReservation as ReturnType<typeof vi.fn>;
+const mockedReserveStockBatch = reserveStockBatch as ReturnType<typeof vi.fn>;
+const mockedConsumeReservationBatch = consumeReservationBatch as ReturnType<typeof vi.fn>;
 const mockedReleaseReservation = releaseReservation as ReturnType<typeof vi.fn>;
 const mockedAssertTransition = assertTransition as ReturnType<typeof vi.fn>;
 
@@ -280,10 +280,10 @@ describe('mirv.service', () => {
       ],
     };
 
-    it('should approve and reserve stock for each line', async () => {
+    it('should approve and reserve stock via batch call', async () => {
       mockPrisma.mirv.findUnique.mockResolvedValue(pendingMirv);
       mockedProcessApproval.mockResolvedValue(undefined);
-      mockedReserveStock.mockResolvedValue(true);
+      mockedReserveStockBatch.mockResolvedValue({ success: true, failedItems: [] });
       mockPrisma.mirvLine.update.mockResolvedValue({});
       mockPrisma.mirv.update.mockResolvedValue({});
 
@@ -295,14 +295,18 @@ describe('mirv.service', () => {
         status: 'approved',
         warehouseId: 'wh-1',
       });
-      expect(mockedReserveStock).toHaveBeenCalledTimes(2);
+      expect(mockedReserveStockBatch).toHaveBeenCalledTimes(1);
+      expect(mockedReserveStockBatch).toHaveBeenCalledWith([
+        { itemId: 'item-1', warehouseId: 'wh-1', qty: 10 },
+        { itemId: 'item-2', warehouseId: 'wh-1', qty: 5 },
+      ]);
       expect(mockPrisma.mirvLine.update).toHaveBeenCalledTimes(2);
     });
 
     it('should set reservationStatus to "none" when stock reservation fails', async () => {
       mockPrisma.mirv.findUnique.mockResolvedValue(pendingMirv);
       mockedProcessApproval.mockResolvedValue(undefined);
-      mockedReserveStock.mockResolvedValue(false);
+      mockedReserveStockBatch.mockResolvedValue({ success: false, failedItems: ['item-1'] });
       mockPrisma.mirvLine.update.mockResolvedValue({});
       mockPrisma.mirv.update.mockResolvedValue({});
 
@@ -319,7 +323,7 @@ describe('mirv.service', () => {
       const result = await approve('mirv-1', 'reject', 'user-1', 'Not needed');
 
       expect(result.status).toBe('rejected');
-      expect(mockedReserveStock).not.toHaveBeenCalled();
+      expect(mockedReserveStockBatch).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundError when MIRV not found', async () => {
@@ -355,9 +359,15 @@ describe('mirv.service', () => {
       ],
     };
 
-    it('should issue materials, consume reservations, and create gate pass', async () => {
+    it('should issue materials, consume reservations via batch, and create gate pass', async () => {
       mockPrisma.mirv.findUnique.mockResolvedValue(approvedMirv);
-      mockedConsumeReservation.mockResolvedValue({ totalCost: 500 });
+      mockedConsumeReservationBatch.mockResolvedValue({
+        totalCost: 1000,
+        lineCosts: new Map([
+          ['line-1', 800],
+          ['line-2', 200],
+        ]),
+      });
       mockPrisma.mirvLine.update.mockResolvedValue({});
       mockPrisma.mirv.update.mockResolvedValue({});
       mockedGenerateDocNumber.mockResolvedValue('GP-001');
@@ -366,14 +376,24 @@ describe('mirv.service', () => {
       const result = await issue('mirv-1', 'user-1');
 
       expect(result.id).toBe('mirv-1');
-      expect(result.totalCost).toBe(1000); // 500 per line * 2
-      expect(mockedConsumeReservation).toHaveBeenCalledTimes(2);
+      expect(result.totalCost).toBe(1000);
+      expect(mockedConsumeReservationBatch).toHaveBeenCalledTimes(1);
+      expect(mockedConsumeReservationBatch).toHaveBeenCalledWith([
+        { itemId: 'item-1', warehouseId: 'wh-1', qty: 8, mirvLineId: 'line-1' },
+        { itemId: 'item-2', warehouseId: 'wh-1', qty: 5, mirvLineId: 'line-2' },
+      ]);
       expect(mockPrisma.gatePass.create).toHaveBeenCalledTimes(1);
     });
 
     it('should use qtyApproved when available, fallback to qtyRequested', async () => {
       mockPrisma.mirv.findUnique.mockResolvedValue(approvedMirv);
-      mockedConsumeReservation.mockResolvedValue({ totalCost: 100 });
+      mockedConsumeReservationBatch.mockResolvedValue({
+        totalCost: 500,
+        lineCosts: new Map([
+          ['line-1', 400],
+          ['line-2', 100],
+        ]),
+      });
       mockPrisma.mirvLine.update.mockResolvedValue({});
       mockPrisma.mirv.update.mockResolvedValue({});
       mockedGenerateDocNumber.mockResolvedValue('GP-002');
@@ -381,15 +401,18 @@ describe('mirv.service', () => {
 
       await issue('mirv-1', 'user-1');
 
-      // line-1: qtyApproved = 8
-      expect(mockedConsumeReservation).toHaveBeenCalledWith('item-1', 'wh-1', 8, 'line-1');
-      // line-2: qtyApproved = null → fallback to qtyRequested = 5
-      expect(mockedConsumeReservation).toHaveBeenCalledWith('item-2', 'wh-1', 5, 'line-2');
+      // Batch call should include: line-1 qty=8 (qtyApproved), line-2 qty=5 (fallback to qtyRequested)
+      const batchArg = mockedConsumeReservationBatch.mock.calls[0][0];
+      expect(batchArg[0]).toEqual({ itemId: 'item-1', warehouseId: 'wh-1', qty: 8, mirvLineId: 'line-1' });
+      expect(batchArg[1]).toEqual({ itemId: 'item-2', warehouseId: 'wh-1', qty: 5, mirvLineId: 'line-2' });
     });
 
     it('should update mirv status to issued', async () => {
       mockPrisma.mirv.findUnique.mockResolvedValue(approvedMirv);
-      mockedConsumeReservation.mockResolvedValue({ totalCost: 0 });
+      mockedConsumeReservationBatch.mockResolvedValue({
+        totalCost: 0,
+        lineCosts: new Map(),
+      });
       mockPrisma.mirvLine.update.mockResolvedValue({});
       mockPrisma.mirv.update.mockResolvedValue({});
       mockedGenerateDocNumber.mockResolvedValue('GP-003');

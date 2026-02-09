@@ -6,7 +6,7 @@ const { mockPrisma } = vi.hoisted(() => {
 
 vi.mock('../utils/prisma.js', () => ({ prisma: mockPrisma }));
 vi.mock('./document-number.service.js', () => ({ generateDocumentNumber: vi.fn() }));
-vi.mock('./inventory.service.js', () => ({ addStock: vi.fn() }));
+vi.mock('./inventory.service.js', () => ({ addStockBatch: vi.fn() }));
 vi.mock('../config/logger.js', () => ({ log: vi.fn() }));
 
 vi.mock('@nit-scs/shared', async importOriginal => {
@@ -19,12 +19,12 @@ vi.mock('@nit-scs/shared', async importOriginal => {
 
 import { createPrismaMock } from '../test-utils/prisma-mock.js';
 import { generateDocumentNumber } from './document-number.service.js';
-import { addStock } from './inventory.service.js';
+import { addStockBatch } from './inventory.service.js';
 import { NotFoundError, BusinessRuleError, assertTransition } from '@nit-scs/shared';
 import { list, getById, create, update, submit, approveQc, receive, store } from './mrrv.service.js';
 
 const mockedGenDoc = generateDocumentNumber as ReturnType<typeof vi.fn>;
-const mockedAddStock = addStock as ReturnType<typeof vi.fn>;
+const mockedAddStockBatch = addStockBatch as ReturnType<typeof vi.fn>;
 const mockedAssertTransition = assertTransition as ReturnType<typeof vi.fn>;
 
 // ── Helpers ──────────────────────────────────────────────────────────────
@@ -500,7 +500,7 @@ describe('mrrv.service', () => {
       await expect(store('nonexistent', 'user-1')).rejects.toThrow(NotFoundError);
     });
 
-    it('calls addStock for each line with qtyToStore > 0', async () => {
+    it('calls addStockBatch with filtered lines (qtyToStore > 0)', async () => {
       const lines = [
         makeMrrvLine({
           id: 'line-a',
@@ -522,14 +522,16 @@ describe('mrrv.service', () => {
       const mrrv = makeMrrv({ status: 'received', mrrvLines: lines });
       mockPrisma.mrrv.findUnique.mockResolvedValue(mrrv);
       mockPrisma.mrrv.update.mockResolvedValue({ ...mrrv, status: 'stored' });
-      mockedAddStock.mockResolvedValue(undefined);
+      mockedAddStockBatch.mockResolvedValue(undefined);
 
       await store('mrrv-1', 'user-1');
 
-      expect(mockedAddStock).toHaveBeenCalledTimes(2);
+      expect(mockedAddStockBatch).toHaveBeenCalledTimes(1);
+      const batchArg = mockedAddStockBatch.mock.calls[0][0];
+      expect(batchArg).toHaveLength(2);
 
       // First line: qtyToStore = 10 - 2 = 8
-      expect(mockedAddStock).toHaveBeenCalledWith(
+      expect(batchArg[0]).toEqual(
         expect.objectContaining({
           itemId: 'item-1',
           warehouseId: 'wh-1',
@@ -543,7 +545,7 @@ describe('mrrv.service', () => {
       );
 
       // Second line: qtyToStore = 5 - 0 = 5
-      expect(mockedAddStock).toHaveBeenCalledWith(
+      expect(batchArg[1]).toEqual(
         expect.objectContaining({
           itemId: 'item-2',
           warehouseId: 'wh-1',
@@ -556,17 +558,18 @@ describe('mrrv.service', () => {
       );
     });
 
-    it('skips addStock for lines where qtyToStore is 0', async () => {
+    it('calls addStockBatch with empty array when all qtyToStore is 0', async () => {
       const lines = [
         makeMrrvLine({ qtyReceived: 5, qtyDamaged: 5 }), // net 0
       ];
       const mrrv = makeMrrv({ status: 'received', mrrvLines: lines });
       mockPrisma.mrrv.findUnique.mockResolvedValue(mrrv);
       mockPrisma.mrrv.update.mockResolvedValue({ ...mrrv, status: 'stored' });
+      mockedAddStockBatch.mockResolvedValue(undefined);
 
       await store('mrrv-1', 'user-1');
 
-      expect(mockedAddStock).not.toHaveBeenCalled();
+      expect(mockedAddStockBatch).toHaveBeenCalledWith([]);
     });
 
     it('returns id, warehouseId, and linesStored count', async () => {
@@ -574,7 +577,7 @@ describe('mrrv.service', () => {
       const mrrv = makeMrrv({ status: 'received', mrrvLines: lines });
       mockPrisma.mrrv.findUnique.mockResolvedValue(mrrv);
       mockPrisma.mrrv.update.mockResolvedValue({ ...mrrv, status: 'stored' });
-      mockedAddStock.mockResolvedValue(undefined);
+      mockedAddStockBatch.mockResolvedValue(undefined);
 
       const result = await store('mrrv-1', 'user-1');
 
@@ -590,11 +593,12 @@ describe('mrrv.service', () => {
       const mrrv = makeMrrv({ status: 'received', mrrvLines: lines });
       mockPrisma.mrrv.findUnique.mockResolvedValue(mrrv);
       mockPrisma.mrrv.update.mockResolvedValue({ ...mrrv, status: 'stored' });
-      mockedAddStock.mockResolvedValue(undefined);
+      mockedAddStockBatch.mockResolvedValue(undefined);
 
       await store('mrrv-1', 'user-1');
 
-      expect(mockedAddStock).toHaveBeenCalledWith(expect.objectContaining({ unitCost: undefined }));
+      const batchArg = mockedAddStockBatch.mock.calls[0][0];
+      expect(batchArg[0]).toEqual(expect.objectContaining({ unitCost: undefined }));
     });
   });
 });

@@ -1,7 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../utils/prisma.js';
 import { generateDocumentNumber } from './document-number.service.js';
-import { addStock } from './inventory.service.js';
+import { addStockBatch } from './inventory.service.js';
 import { NotFoundError, BusinessRuleError } from '@nit-scs/shared';
 import { assertTransition } from '@nit-scs/shared';
 import type { MrvCreateDto, MrvUpdateDto, MrvLineDto, ListParams } from '../types/dto.js';
@@ -141,14 +141,13 @@ export async function complete(id: string, userId: string) {
   await prisma.mrv.update({ where: { id: mrv.id }, data: { status: 'completed' } });
 
   const goodLines = mrv.mrvLines.filter(l => l.condition === 'good');
-  for (const line of goodLines) {
-    await addStock({
-      itemId: line.itemId,
-      warehouseId: mrv.toWarehouseId,
-      qty: Number(line.qtyReturned),
-      performedById: userId,
-    });
-  }
+  const stockItems = goodLines.map(line => ({
+    itemId: line.itemId,
+    warehouseId: mrv.toWarehouseId,
+    qty: Number(line.qtyReturned),
+    performedById: userId,
+  }));
+  await addStockBatch(stockItems);
 
   return {
     id: mrv.id,

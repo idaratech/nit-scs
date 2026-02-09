@@ -1,7 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../utils/prisma.js';
 import { generateDocumentNumber } from './document-number.service.js';
-import { addStock, deductStock } from './inventory.service.js';
+import { addStockBatch, deductStockBatch } from './inventory.service.js';
 import { NotFoundError, BusinessRuleError } from '@nit-scs/shared';
 import { assertTransition } from '@nit-scs/shared';
 import type { StockTransferCreateDto, StockTransferUpdateDto, StockTransferLineDto, ListParams } from '../types/dto.js';
@@ -145,12 +145,13 @@ export async function ship(id: string) {
   if (!st) throw new NotFoundError('Stock Transfer', id);
   assertTransition(DOC_TYPE, st.status, 'shipped');
 
-  for (const line of st.stockTransferLines) {
-    await deductStock(line.itemId, st.fromWarehouseId, Number(line.quantity), {
-      referenceType: 'stock_transfer_line',
-      referenceId: line.id,
-    });
-  }
+  const deductItems = st.stockTransferLines.map(line => ({
+    itemId: line.itemId,
+    warehouseId: st.fromWarehouseId,
+    qty: Number(line.quantity),
+    ref: { referenceType: 'stock_transfer_line', referenceId: line.id },
+  }));
+  await deductStockBatch(deductItems);
 
   const updated = await prisma.stockTransfer.update({
     where: { id: st.id },
@@ -168,14 +169,13 @@ export async function receive(id: string, userId: string) {
   if (!st) throw new NotFoundError('Stock Transfer', id);
   assertTransition(DOC_TYPE, st.status, 'received');
 
-  for (const line of st.stockTransferLines) {
-    await addStock({
-      itemId: line.itemId,
-      warehouseId: st.toWarehouseId,
-      qty: Number(line.quantity),
-      performedById: userId,
-    });
-  }
+  const stockItems = st.stockTransferLines.map(line => ({
+    itemId: line.itemId,
+    warehouseId: st.toWarehouseId,
+    qty: Number(line.quantity),
+    performedById: userId,
+  }));
+  await addStockBatch(stockItems);
 
   const updated = await prisma.stockTransfer.update({
     where: { id: st.id },
