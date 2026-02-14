@@ -1,37 +1,36 @@
 import { z } from 'zod';
 
+// Helper: trim trailing whitespace/newlines that Vercel adds to env vars
+const trimmed = z.string().trim();
+
 const envSchema = z.object({
   // Database
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: trimmed.url(),
 
   // Redis — optional in development, recommended in production
-  REDIS_URL: z.string().optional(),
+  REDIS_URL: trimmed.optional(),
 
   // JWT — minimum 32 chars for security
-  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
-  JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
-  JWT_EXPIRES_IN: z.string().default('15m'),
-  JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
+  JWT_SECRET: trimmed.min(32, 'JWT_SECRET must be at least 32 characters'),
+  JWT_REFRESH_SECRET: trimmed.min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
+  JWT_EXPIRES_IN: trimmed.default('15m'),
+  JWT_REFRESH_EXPIRES_IN: trimmed.default('7d'),
 
   // Server
   PORT: z.coerce.number().default(4000),
-  NODE_ENV: z
-    .string()
-    .trim()
-    .pipe(z.enum(['development', 'production', 'test']))
-    .default('development'),
-  CORS_ORIGIN: z.string().default('http://localhost:3000'),
+  NODE_ENV: trimmed.pipe(z.enum(['development', 'production', 'test'])).default('development'),
+  CORS_ORIGIN: trimmed.default('http://localhost:3000'),
 
   // Web Push (VAPID) — optional, auto-generated in development
-  VAPID_PUBLIC_KEY: z.string().optional(),
-  VAPID_PRIVATE_KEY: z.string().optional(),
-  VAPID_SUBJECT: z.string().optional().default('mailto:admin@nit-scs.com'),
+  VAPID_PUBLIC_KEY: trimmed.optional(),
+  VAPID_PRIVATE_KEY: trimmed.optional(),
+  VAPID_SUBJECT: trimmed.optional().default('mailto:admin@nit-scs.com'),
 
   // Email (Resend) — optional in development
-  RESEND_API_KEY: z.string().optional(),
-  RESEND_FROM_EMAIL: z.string().email().optional(),
-  RESEND_FROM_NAME: z.string().optional().default('NIT Logistics'),
-  RESEND_WEBHOOK_SECRET: z.string().optional(),
+  RESEND_API_KEY: trimmed.optional(),
+  RESEND_FROM_EMAIL: trimmed.email().optional(),
+  RESEND_FROM_NAME: trimmed.optional().default('NIT Logistics'),
+  RESEND_WEBHOOK_SECRET: trimmed.optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
