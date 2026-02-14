@@ -14,3 +14,5 @@ packages/backend/prisma/seed.js.map
 # Uploaded files
 uploads/*
 !uploads/.gitkeep
+.vercel
+.env*.local

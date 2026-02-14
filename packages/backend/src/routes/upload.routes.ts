@@ -9,7 +9,7 @@ import { authenticate } from '../middleware/auth.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const UPLOADS_DIR = join(__dirname, '../../uploads');
+const UPLOADS_DIR = process.env.VERCEL ? '/tmp/uploads' : join(__dirname, '../../uploads');
 
 // Ensure uploads directory exists
 if (!existsSync(UPLOADS_DIR)) {

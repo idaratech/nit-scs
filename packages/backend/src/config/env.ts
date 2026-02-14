@@ -15,7 +15,11 @@ const envSchema = z.object({
 
   // Server
   PORT: z.coerce.number().default(4000),
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z
+    .string()
+    .trim()
+    .pipe(z.enum(['development', 'production', 'test']))
+    .default('development'),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
 
   // Web Push (VAPID) — optional, auto-generated in development
@@ -42,7 +46,7 @@ export function getEnv(): Env {
   if (!_env) {
     const result = envSchema.safeParse(process.env);
     if (!result.success) {
-      if (process.env.NODE_ENV === 'production') {
+      if (process.env.NODE_ENV?.trim() === 'production') {
         console.error('Environment validation failed:', result.error.format());
         throw new Error('Invalid environment configuration — cannot start in production with invalid env');
       }

@@ -7,7 +7,7 @@ import pino from 'pino';
 // Development: Pretty-printed with colors
 // ---------------------------------------------------------------------------
 
-const isDev = process.env.NODE_ENV !== 'production';
+const isDev = process.env.NODE_ENV !== 'production' && !process.env.VERCEL;
 
 export const logger = pino({
   level: process.env.LOG_LEVEL || (isDev ? 'debug' : 'info'),
@@ -34,7 +34,7 @@ export const logger = pino({
     }),
   },
 
-  // Pretty-print only in development
+  // Pretty-print only in local development (pino-pretty is a devDependency)
   transport: isDev ? { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:standard' } } : undefined,
 });
 

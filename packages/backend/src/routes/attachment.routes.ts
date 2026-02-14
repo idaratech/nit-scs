@@ -10,7 +10,7 @@ import { sendSuccess, sendError } from '../utils/response.js';
 import * as attachmentService from '../services/attachment.service.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const UPLOADS_DIR = join(__dirname, '../../uploads/attachments');
+const UPLOADS_DIR = process.env.VERCEL ? '/tmp/uploads/attachments' : join(__dirname, '../../uploads/attachments');
 
 if (!existsSync(UPLOADS_DIR)) {
   mkdirSync(UPLOADS_DIR, { recursive: true });

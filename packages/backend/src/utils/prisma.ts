@@ -12,15 +12,8 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefi
 // ---------------------------------------------------------------------------
 // Soft-Delete Middleware (via $extends)
 // ---------------------------------------------------------------------------
-// Auto-filter `deletedAt` for read queries. The delete→update conversion is
-// intentionally left to the application layer (crud-factory.ts) because not
-// every model has a `deletedAt` column.
-// ---------------------------------------------------------------------------
-
-// Models that have a `deletedAt` column — keep in sync with the Prisma schema
 const SOFT_DELETE_MODELS: ReadonlySet<string> = new Set(
   Object.values(Prisma.ModelName).filter(name => {
-    // Check if the model's fields include 'deletedAt'
     const fields = Prisma.dmmf.datamodel.models.find(m => m.name === name)?.fields;
     return fields?.some(f => f.name === 'deletedAt');
   }),

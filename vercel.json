@@ -1,0 +1,15 @@
+{
+  "buildCommand": "pnpm --filter @nit-scs-v2/shared build && cd packages/backend && npx prisma generate && cd ../.. && pnpm --filter @nit-scs-v2/frontend build",
+  "outputDirectory": "packages/frontend/dist",
+  "framework": "vite",
+  "installCommand": "corepack enable && pnpm install",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api" }
+  ],
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30,
+      "includeFiles": "packages/backend/**,node_modules/.pnpm/@prisma+client*/node_modules/.prisma/**"
+    }
+  }
+}

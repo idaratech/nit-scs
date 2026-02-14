@@ -1,6 +1,7 @@
 {
   "name": "nit-scs-v2",
   "private": true,
+  "type": "module",
   "version": "1.0.0",
   "description": "NIT Supply Chain System V2 - Full Stack Monorepo",
   "scripts": {
@@ -22,6 +23,7 @@
     "clean": "pnpm -r run clean && rm -rf node_modules",
     "prepare": "husky"
   },
+  "packageManager": "pnpm@10.29.2",
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"

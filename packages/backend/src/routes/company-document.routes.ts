@@ -15,7 +15,7 @@ import { updateDocumentSchema } from '../schemas/company-document.schema.js';
 const router = Router();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DOCS_DIR = join(__dirname, '../../uploads/documents');
+const DOCS_DIR = process.env.VERCEL ? '/tmp/uploads/documents' : join(__dirname, '../../uploads/documents');
 
 if (!existsSync(DOCS_DIR)) {
   mkdirSync(DOCS_DIR, { recursive: true });
@@ -104,7 +104,10 @@ router.get('/:id', authenticate, async (req: Request, res: Response, next: NextF
       where: { id },
       include: { uploadedBy: { select: { id: true, fullName: true } } },
     });
-    if (!doc) { sendError(res, 404, 'Document not found'); return; }
+    if (!doc) {
+      sendError(res, 404, 'Document not found');
+      return;
+    }
     sendSuccess(res, doc);
   } catch (err) {
     next(err);
@@ -113,7 +116,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response, next: NextF
 
 // POST /api/documents — Upload + create (admin, manager)
 router.post('/', authenticate, requireRole('admin', 'manager'), (req: Request, res: Response, next: NextFunction) => {
-  upload.single('file')(req, res, async (err) => {
+  upload.single('file')(req, res, async err => {
     if (err instanceof multer.MulterError) {
       return sendError(res, 400, err.code === 'LIMIT_FILE_SIZE' ? 'File too large (max 25MB)' : err.message);
     }
@@ -148,31 +151,43 @@ router.post('/', authenticate, requireRole('admin', 'manager'), (req: Request, r
 });
 
 // PUT /api/documents/:id — Update metadata (admin, manager)
-router.put('/:id', authenticate, requireRole('admin', 'manager'), validate(updateDocumentSchema), async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const id = req.params.id as string;
-    const existing = await prisma.companyDocument.findUnique({ where: { id } });
-    if (!existing) { sendError(res, 404, 'Document not found'); return; }
+router.put(
+  '/:id',
+  authenticate,
+  requireRole('admin', 'manager'),
+  validate(updateDocumentSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = req.params.id as string;
+      const existing = await prisma.companyDocument.findUnique({ where: { id } });
+      if (!existing) {
+        sendError(res, 404, 'Document not found');
+        return;
+      }
 
-    const doc = await prisma.companyDocument.update({
-      where: { id },
-      data: req.body,
-      include: { uploadedBy: { select: { id: true, fullName: true } } },
-    });
-    const io = req.app.get('io');
-    io?.emit('entity:updated', { entity: 'documents' });
-    sendSuccess(res, doc);
-  } catch (err) {
-    next(err);
-  }
-});
+      const doc = await prisma.companyDocument.update({
+        where: { id },
+        data: req.body,
+        include: { uploadedBy: { select: { id: true, fullName: true } } },
+      });
+      const io = req.app.get('io');
+      io?.emit('entity:updated', { entity: 'documents' });
+      sendSuccess(res, doc);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 // DELETE /api/documents/:id — Soft-delete (admin only)
 router.delete('/:id', authenticate, requireRole('admin'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
     const existing = await prisma.companyDocument.findUnique({ where: { id } });
-    if (!existing) { sendError(res, 404, 'Document not found'); return; }
+    if (!existing) {
+      sendError(res, 404, 'Document not found');
+      return;
+    }
 
     await prisma.companyDocument.update({ where: { id }, data: { isActive: false } });
     const io = req.app.get('io');
