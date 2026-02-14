@@ -2,8 +2,8 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../utils/prisma.js';
 import { generateDocumentNumber } from './document-number.service.js';
 import { addStockBatch } from './inventory.service.js';
-import { NotFoundError, BusinessRuleError } from '@nit-scs/shared';
-import { assertTransition } from '@nit-scs/shared';
+import { NotFoundError, BusinessRuleError } from '@nit-scs-v2/shared';
+import { assertTransition } from '@nit-scs-v2/shared';
 import type { MrvCreateDto, MrvUpdateDto, MrvLineDto, ListParams } from '../types/dto.js';
 
 const DOC_TYPE = 'mrv';
@@ -74,7 +74,7 @@ export async function create(headerData: Omit<MrvCreateDto, 'lines'>, lines: Mrv
         returnedById: userId,
         returnDate: new Date(headerData.returnDate),
         reason: headerData.reason ?? null,
-        originalMirvId: headerData.originalMirvId ?? null,
+        originalMirvId: (headerData as any).originalMiId ?? (headerData as any).originalMirvId ?? null,
         status: 'draft',
         notes: headerData.notes ?? null,
         mrvLines: {
@@ -149,10 +149,32 @@ export async function complete(id: string, userId: string) {
   }));
   await addStockBatch(stockItems);
 
+  // Auto-create SurplusItem when returnType is 'surplus'
+  let surplusItemId: string | null = null;
+  if (mrv.returnType === 'surplus') {
+    const totalReturnQty = mrv.mrvLines.reduce((sum, l) => sum + Number(l.qtyReturned), 0);
+    const surplusNumber = await generateDocumentNumber('surplus');
+    const surplus = await prisma.surplusItem.create({
+      data: {
+        surplusNumber,
+        itemId: mrv.mrvLines[0]?.itemId,
+        warehouseId: mrv.toWarehouseId,
+        projectId: mrv.projectId,
+        qty: totalReturnQty,
+        status: 'identified',
+        createdById: userId,
+        // NOTE: mrvId field pending schema migration to link surplus back to MRV
+        // mrvId: mrv.id,
+      } as any,
+    });
+    surplusItemId = surplus.id;
+  }
+
   return {
     id: mrv.id,
     toWarehouseId: mrv.toWarehouseId,
     goodLinesRestocked: goodLines.length,
     totalLines: mrv.mrvLines.length,
+    surplusItemId,
   };
 }

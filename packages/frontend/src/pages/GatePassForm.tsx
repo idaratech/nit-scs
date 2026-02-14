@@ -5,7 +5,7 @@ import { useMirvList } from '@/api/hooks/useMirv';
 import { useMrrvList } from '@/api/hooks/useMrrv';
 import { useCreateGatePass } from '@/api/hooks/useGatePasses';
 import { useWarehouses } from '@/api/hooks/useMasterData';
-import type { Warehouse } from '@nit-scs/shared/types';
+import type { Warehouse } from '@nit-scs-v2/shared/types';
 import { previewNextNumber } from '@/utils/autoNumber';
 
 export const GatePassForm: React.FC = () => {
@@ -187,14 +187,14 @@ export const GatePassForm: React.FC = () => {
                   className="nesma-input px-4 py-3 w-full bg-white/5 border border-white/10 rounded-xl text-white focus:border-nesma-secondary outline-none"
                 >
                   <option value="">None (Manual)</option>
-                  <optgroup label="MIRV (Issue Vouchers)">
+                  <optgroup label="MI (Material Issuance)">
                     {mirvData.map(m => (
                       <option key={m.id as string} value={m.id as string}>
                         {m.id as string} - {(m.project as string) || 'N/A'}
                       </option>
                     ))}
                   </optgroup>
-                  <optgroup label="MRRV (Receipt Vouchers)">
+                  <optgroup label="GRN (Goods Receipt Notes)">
                     {mrrvData.map(m => (
                       <option key={m.id as string} value={m.id as string}>
                         {m.id as string} - {(m.supplier as string) || 'N/A'}

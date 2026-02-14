@@ -1,13 +1,24 @@
 import React, { Suspense, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Truck, Target, Bus, AlertTriangle, FileText, ShieldCheck } from 'lucide-react';
+import { Truck, Target, Bus, AlertTriangle, FileText, ShieldCheck, FileSignature, Zap, Ship } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { SectionLandingPage } from '@/components/SectionLandingPage';
 import { StatusBadge } from '@/components/StatusBadge';
 import { RouteErrorBoundary } from '@/components/RouteErrorBoundary';
 import type { KpiCardProps } from '@/components/KpiCard';
 import type { TabDef } from '@/components/SectionTabBar';
-import { useDashboardStats, useSLACompliance, useJobOrders, useFleet } from '@/api/hooks';
+import { DocumentListPanel } from '@/components/DocumentListPanel';
+import { RESOURCE_COLUMNS } from '@/config/resourceColumns';
+import {
+  useDashboardStats,
+  useSLACompliance,
+  useJobOrders,
+  useFleet,
+  useGatePassList,
+  useRentalContractList,
+  useShipmentList,
+  useGeneratorMaintenanceList,
+} from '@/api/hooks';
 
 const LazyKanban = React.lazy(() =>
   import('@/pages/transport/JobOrdersKanban').then(m => ({ default: m.JobOrdersKanban })),
@@ -33,6 +44,10 @@ export const LogisticsSectionPage: React.FC = () => {
   const slaQuery = useSLACompliance();
   const joQuery = useJobOrders({ pageSize: 50 });
   const fleetQuery = useFleet({ pageSize: 50 });
+  const gpQuery = useGatePassList({ pageSize: 50 });
+  const rcQuery = useRentalContractList({ pageSize: 50 });
+  const shipQuery = useShipmentList({ pageSize: 50 });
+  const genQuery = useGeneratorMaintenanceList({ pageSize: 50 });
 
   const stats = statsQuery.data?.data;
   const sla = slaQuery.data?.data;
@@ -74,6 +89,10 @@ export const LogisticsSectionPage: React.FC = () => {
     { key: 'sla', label: 'SLA' },
     { key: 'payments', label: 'Payments' },
     { key: 'map', label: 'Map' },
+    { key: 'gate-passes', label: 'Gate Passes' },
+    { key: 'rental-contracts', label: 'Rental Contracts' },
+    { key: 'generators', label: 'Generators' },
+    { key: 'shipments', label: 'Shipments' },
   ];
 
   // ── Overview data ─────────────────────────────────────────────────────────
@@ -335,6 +354,52 @@ export const LogisticsSectionPage: React.FC = () => {
           <LazyMap />
         </Suspense>
       </RouteErrorBoundary>
+    ),
+
+    'gate-passes': (
+      <DocumentListPanel
+        title="Gate Passes"
+        icon={ShieldCheck}
+        columns={RESOURCE_COLUMNS['gate-passes'].columns}
+        rows={(gpQuery.data?.data ?? []) as Record<string, unknown>[]}
+        loading={gpQuery.isLoading}
+        createLabel="New Gate Pass"
+        createUrl="/admin/forms/gatepass"
+      />
+    ),
+
+    'rental-contracts': (
+      <DocumentListPanel
+        title="Rental Contracts"
+        icon={FileSignature}
+        columns={RESOURCE_COLUMNS['rental-contracts'].columns}
+        rows={(rcQuery.data?.data ?? []) as Record<string, unknown>[]}
+        loading={rcQuery.isLoading}
+        createLabel="New Rental Contract"
+        createUrl="/admin/forms/rental-contract"
+      />
+    ),
+
+    generators: (
+      <DocumentListPanel
+        title="Generator Maintenance"
+        icon={Zap}
+        columns={RESOURCE_COLUMNS.generators.columns}
+        rows={(genQuery.data?.data ?? []) as Record<string, unknown>[]}
+        loading={genQuery.isLoading}
+        createLabel="New Maintenance"
+        createUrl="/admin/forms/generator-maintenance"
+      />
+    ),
+
+    shipments: (
+      <DocumentListPanel
+        title="Shipments"
+        icon={Ship}
+        columns={RESOURCE_COLUMNS.shipments.columns}
+        rows={(shipQuery.data?.data ?? []) as Record<string, unknown>[]}
+        loading={shipQuery.isLoading}
+      />
     ),
   };
 

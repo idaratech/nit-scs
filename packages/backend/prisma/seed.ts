@@ -276,6 +276,24 @@ async function main() {
       role: 'Manager',
       sysRole: 'manager',
     },
+    {
+      id: 'EMP-007',
+      name: 'Fahad Al-Otaibi',
+      nameAr: 'فهد العتيبي',
+      email: 'fahad@nit.sa',
+      dept: 'transport',
+      role: 'Transport Supervisor',
+      sysRole: 'transport_supervisor',
+    },
+    {
+      id: 'EMP-008',
+      name: 'Nasser Al-Qahtani',
+      nameAr: 'ناصر القحطاني',
+      email: 'nasser@nit.sa',
+      dept: 'warehouse',
+      role: 'Scrap Committee Member',
+      sysRole: 'scrap_committee_member',
+    },
   ];
   for (const emp of sampleEmployees) {
     await prisma.employee
@@ -295,6 +313,214 @@ async function main() {
       .catch(() => null);
   }
   console.log(`  Sample Employees: ${sampleEmployees.length}`);
+
+  // ── Default Warehouse + Zones ─────────────────────────────────────────
+  const mainWhType = await prisma.warehouseType.findFirst({ where: { typeName: 'Main Warehouse' } });
+  const riyadhRegion = regions.find(r => r.regionName === 'Riyadh')!;
+
+  if (mainWhType) {
+    const warehouse = await prisma.warehouse
+      .create({
+        data: {
+          warehouseCode: 'WH-MAIN',
+          warehouseName: 'NIT Main Warehouse',
+          warehouseNameAr: 'مستودع نسما الرئيسي',
+          warehouseTypeId: mainWhType.id,
+          regionId: riyadhRegion.id,
+          status: 'active',
+        },
+      })
+      .catch(() => prisma.warehouse.findFirst({ where: { warehouseCode: 'WH-MAIN' } }).then(r => r!));
+
+    if (warehouse) {
+      const defaultZones = [
+        { zoneCode: 'A', zoneName: 'Zone A - Civil', zoneType: 'civil' },
+        { zoneCode: 'B', zoneName: 'Zone B - Mechanical', zoneType: 'mechanical' },
+        { zoneCode: 'C', zoneName: 'Zone C - Electrical', zoneType: 'electrical' },
+        { zoneCode: 'CONTAINER', zoneName: 'Container Storage', zoneType: 'container' },
+        { zoneCode: 'OPEN_YARD', zoneName: 'Open Yard', zoneType: 'open_yard' },
+        { zoneCode: 'HAZARDOUS', zoneName: 'Hazardous Materials', zoneType: 'hazardous' },
+      ];
+      for (const z of defaultZones) {
+        await prisma.warehouseZone
+          .create({
+            data: {
+              warehouseId: warehouse.id,
+              zoneCode: z.zoneCode,
+              zoneName: z.zoneName,
+              zoneType: z.zoneType,
+            },
+          })
+          .catch(() => null);
+      }
+      console.log(`  Warehouse Zones: ${defaultZones.length} (in ${warehouse.warehouseName})`);
+    }
+  }
+
+  // ── Role Permissions (seed from ROLE_PERMISSIONS defaults) ──────────
+  const ROLE_PERMISSIONS: Record<string, Record<string, string[]>> = {
+    admin: {
+      grn: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+      mi: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+      mrn: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+      qci: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+      dr: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+      jo: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+      gatepass: ['create', 'read', 'update', 'delete', 'export'],
+      wt: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+      mr: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+      shipment: ['create', 'read', 'update', 'delete', 'export'],
+      customs: ['create', 'read', 'update', 'delete', 'export'],
+      inventory: ['read', 'update', 'export'],
+      items: ['create', 'read', 'update', 'delete', 'export'],
+      projects: ['create', 'read', 'update', 'delete', 'export'],
+      suppliers: ['create', 'read', 'update', 'delete', 'export'],
+      employees: ['create', 'read', 'update', 'delete', 'export'],
+      warehouses: ['create', 'read', 'update', 'delete', 'export'],
+      generators: ['create', 'read', 'update', 'delete', 'export'],
+      fleet: ['create', 'read', 'update', 'delete', 'export'],
+      reports: ['read', 'export'],
+      'audit-log': ['read', 'export'],
+      settings: ['read', 'update'],
+      roles: ['read', 'update'],
+      imsf: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+      surplus: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+      scrap: ['create', 'read', 'update', 'delete', 'approve', 'export'],
+      ssc: ['create', 'read', 'update', 'approve'],
+      rental_contract: ['create', 'read', 'update', 'delete', 'approve'],
+      tool: ['create', 'read', 'update', 'delete'],
+      tool_issue: ['create', 'read', 'update'],
+      bin_card: ['read', 'update'],
+      generator_fuel: ['create', 'read'],
+      generator_maintenance: ['create', 'read', 'update'],
+      warehouse_zone: ['create', 'read', 'update', 'delete'],
+    },
+    manager: {
+      grn: ['read', 'approve', 'export'],
+      mi: ['read', 'approve', 'export'],
+      mrn: ['read', 'approve', 'export'],
+      qci: ['read', 'approve', 'export'],
+      dr: ['read', 'export'],
+      jo: ['create', 'read', 'approve', 'export'],
+      gatepass: ['read', 'export'],
+      wt: ['read', 'approve', 'export'],
+      mr: ['read', 'approve', 'export'],
+      shipment: ['read', 'export'],
+      customs: ['read', 'export'],
+      inventory: ['read', 'export'],
+      items: ['read', 'export'],
+      projects: ['read', 'export'],
+      suppliers: ['read', 'export'],
+      employees: ['read', 'export'],
+      warehouses: ['read', 'export'],
+      reports: ['read', 'export'],
+    },
+    warehouse_supervisor: {
+      grn: ['create', 'read', 'update', 'approve'],
+      mi: ['read', 'update', 'approve'],
+      mrn: ['create', 'read', 'update'],
+      qci: ['create', 'read'],
+      dr: ['create', 'read', 'update'],
+      gatepass: ['create', 'read', 'update'],
+      wt: ['create', 'read', 'update'],
+      inventory: ['read', 'update', 'export'],
+      items: ['read', 'update'],
+      projects: ['read'],
+      warehouses: ['read'],
+      imsf: ['create', 'read', 'update'],
+      surplus: ['create', 'read', 'update'],
+      scrap: ['create', 'read'],
+      bin_card: ['read', 'update'],
+      warehouse_zone: ['read'],
+      tool: ['read', 'update'],
+      tool_issue: ['create', 'read', 'update'],
+    },
+    warehouse_staff: {
+      grn: ['create', 'read', 'update'],
+      mi: ['read', 'update'],
+      mrn: ['create', 'read', 'update'],
+      qci: ['create', 'read'],
+      dr: ['create', 'read'],
+      gatepass: ['create', 'read', 'update'],
+      wt: ['create', 'read'],
+      inventory: ['read', 'update'],
+      items: ['read'],
+      projects: ['read'],
+      imsf: ['read'],
+      bin_card: ['read', 'update'],
+      tool_issue: ['create', 'read'],
+    },
+    logistics_coordinator: {
+      grn: ['create', 'read', 'update'],
+      mi: ['create', 'read', 'update', 'approve'],
+      mrn: ['create', 'read', 'update'],
+      jo: ['create', 'read', 'update', 'approve'],
+      shipment: ['create', 'read', 'update'],
+      customs: ['create', 'read', 'update'],
+      gatepass: ['create', 'read', 'update'],
+      wt: ['create', 'read', 'update'],
+      inventory: ['read', 'export'],
+      suppliers: ['read'],
+      imsf: ['create', 'read', 'update'],
+      rental_contract: ['read'],
+      generator_fuel: ['create', 'read'],
+      generator_maintenance: ['read'],
+    },
+    site_engineer: {
+      mi: ['create', 'read'],
+      mr: ['create', 'read'],
+      jo: ['create', 'read'],
+      inventory: ['read'],
+      projects: ['read'],
+    },
+    qc_officer: {
+      qci: ['create', 'read', 'update', 'approve'],
+      dr: ['create', 'read', 'update'],
+      grn: ['read'],
+      inventory: ['read'],
+      scrap: ['read', 'approve'],
+      surplus: ['read'],
+    },
+    freight_forwarder: {
+      shipment: ['read', 'update'],
+      customs: ['read'],
+      gatepass: ['read'],
+    },
+    transport_supervisor: {
+      jo: ['create', 'read', 'update', 'approve'],
+      gatepass: ['create', 'read', 'update'],
+      wt: ['create', 'read', 'update', 'approve'],
+      imsf: ['create', 'read', 'update'],
+      mr: ['read'],
+      mi: ['read'],
+      grn: ['read'],
+      inventory: ['read'],
+      fleet: ['read', 'update'],
+      generators: ['read'],
+      shipment: ['read'],
+    },
+    scrap_committee_member: {
+      scrap: ['read', 'approve'],
+      ssc: ['create', 'read', 'update', 'approve'],
+      surplus: ['read'],
+      inventory: ['read'],
+    },
+  };
+
+  let permCount = 0;
+  for (const [role, resources] of Object.entries(ROLE_PERMISSIONS)) {
+    for (const [resource, actions] of Object.entries(resources)) {
+      await prisma.rolePermission
+        .upsert({
+          where: { role_resource: { role, resource } },
+          update: { actions },
+          create: { role, resource, actions },
+        })
+        .catch(() => null);
+      permCount++;
+    }
+  }
+  console.log(`  Role Permissions: ${permCount}`);
 
   console.log('\nSeed completed successfully.');
 }

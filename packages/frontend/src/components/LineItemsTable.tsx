@@ -1,6 +1,6 @@
 import React, { Suspense, useState, useMemo } from 'react';
 import { Plus, Trash2, Search, AlertTriangle, ScanLine } from 'lucide-react';
-import type { VoucherLineItem, MaterialCatalogItem } from '@nit-scs/shared/types';
+import type { VoucherLineItem, MaterialCatalogItem } from '@nit-scs-v2/shared/types';
 import { useItems, useUoms, useInventory } from '@/api/hooks/useMasterData';
 
 const BarcodeScanner = React.lazy(() => import('@/components/BarcodeScanner'));
@@ -8,8 +8,8 @@ const BarcodeScanner = React.lazy(() => import('@/components/BarcodeScanner'));
 interface LineItemsTableProps {
   items: VoucherLineItem[];
   onItemsChange: (items: VoucherLineItem[]) => void;
-  showCondition?: boolean; // For MRV/MRRV
-  showStockAvailability?: boolean; // For MIRV - shows available qty
+  showCondition?: boolean; // For MRN/GRN
+  showStockAvailability?: boolean; // For MI - shows available qty
   readOnly?: boolean;
 }
 

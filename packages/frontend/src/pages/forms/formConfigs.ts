@@ -1,13 +1,13 @@
 import { Package, Truck, Shield, AlertTriangle, RefreshCw, FileText } from 'lucide-react';
-import type { VoucherLineItem } from '@nit-scs/shared/types';
+import type { VoucherLineItem } from '@nit-scs-v2/shared/types';
 import {
-  validateMRRV,
-  validateMIRV,
-  validateMRV,
+  validateGRN,
+  validateMI,
+  validateMRN,
   validateJO,
-  validateRFIM,
-  validateOSD,
-} from '@nit-scs/shared/validators';
+  validateQCI,
+  validateDR,
+} from '@nit-scs-v2/shared/validators';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -68,12 +68,12 @@ export const VALIDATOR_MAP: Record<
     warnings: { field: string; rule: string; message: string }[];
   }
 > = {
-  mrrv: validateMRRV,
-  mirv: validateMIRV,
-  mrv: validateMRV,
+  mrrv: validateGRN,
+  mirv: validateMI,
+  mrv: validateMRN,
   jo: validateJO,
-  rfim: validateRFIM,
-  osd: validateOSD,
+  rfim: validateQCI,
+  osd: validateDR,
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -112,9 +112,9 @@ export function getFormConfig(formType: string | undefined, options: FormConfigO
   switch (formType) {
     case 'mirv':
       return {
-        title: isEditMode ? 'Edit Material Issue Request' : 'Material Issue Request',
-        titleEn: 'Material Issue Request',
-        code: 'MIRV',
+        title: isEditMode ? 'Edit Material Issuance' : 'Material Issuance',
+        titleEn: 'Material Issuance',
+        code: 'MI',
         subtitle: 'N-MS-NIT-LSS-FRM-0102',
         icon: Package,
         sections: [
@@ -150,9 +150,9 @@ export function getFormConfig(formType: string | undefined, options: FormConfigO
       };
     case 'mrrv':
       return {
-        title: isEditMode ? 'Edit Material Receiving Report' : 'Material Receiving Report',
-        titleEn: 'Material Receiving Report',
-        code: 'MRRV',
+        title: isEditMode ? 'Edit Goods Receipt Note' : 'Goods Receipt Note',
+        titleEn: 'Goods Receipt Note',
+        code: 'GRN',
         subtitle: 'N-MS-NIT-LSS-FRM-0101',
         icon: Package,
         sections: [
@@ -189,7 +189,7 @@ export function getFormConfig(formType: string | undefined, options: FormConfigO
                 defaultValue: currentUserName,
                 readOnly: true,
               },
-              { key: 'rfimRequired', label: 'Requires Inspection (RFIM)?', type: 'checkbox' },
+              { key: 'rfimRequired', label: 'Requires Inspection (QCI)?', type: 'checkbox' },
               { key: 'attachments', label: 'Attachments', type: 'file' },
             ],
           },
@@ -249,16 +249,16 @@ export function getFormConfig(formType: string | undefined, options: FormConfigO
       };
     case 'rfim':
       return {
-        title: isEditMode ? 'Edit Inspection Request' : 'Request for Inspection of Materials',
-        titleEn: 'Request for Inspection of Materials',
-        code: 'RFIM',
+        title: isEditMode ? 'Edit Quality Control Inspection' : 'Quality Control Inspection',
+        titleEn: 'Quality Control Inspection',
+        code: 'QCI',
         subtitle: 'N-MS-NIT-QC-FRM-0101',
         icon: Shield,
         sections: [
           {
             title: 'Voucher Reference',
             fields: [
-              { key: 'mrrvId', label: 'MRRV Reference', type: 'select', options: mrrvOptions, required: true },
+              { key: 'mrrvId', label: 'GRN Reference', type: 'select', options: mrrvOptions, required: true },
               {
                 key: 'inspectionDate',
                 label: 'Required Inspection Date',
@@ -311,16 +311,16 @@ export function getFormConfig(formType: string | undefined, options: FormConfigO
       };
     case 'osd':
       return {
-        title: isEditMode ? 'Edit OSD Report' : 'Over/Short/Damage Report',
-        titleEn: 'Over/Short/Damage Report',
-        code: 'OSD',
+        title: isEditMode ? 'Edit Discrepancy Report' : 'Discrepancy Report',
+        titleEn: 'Discrepancy Report',
+        code: 'DR',
         subtitle: 'N-MS-NIT-QC-FRM-0102',
         icon: AlertTriangle,
         sections: [
           {
             title: 'Voucher Reference',
             fields: [
-              { key: 'mrrvId', label: 'MRRV Reference', type: 'select', options: mrrvOptions, required: true },
+              { key: 'mrrvId', label: 'GRN Reference', type: 'select', options: mrrvOptions, required: true },
               {
                 key: 'reportDate',
                 label: 'Report Date',
@@ -368,9 +368,9 @@ export function getFormConfig(formType: string | undefined, options: FormConfigO
       };
     case 'mrv':
       return {
-        title: isEditMode ? 'Edit Material Return Voucher' : 'Material Return Voucher',
-        titleEn: 'Material Return Voucher',
-        code: 'MRV',
+        title: isEditMode ? 'Edit Material Return Note' : 'Material Return Note',
+        titleEn: 'Material Return Note',
+        code: 'MRN',
         subtitle: 'N-MS-NIT-LSS-FRM-0103',
         icon: RefreshCw,
         sections: [
@@ -478,8 +478,43 @@ export function getJoTypeSections(joType: string): FormSectionConfig[] {
             { key: 'numberOfTrailers', label: 'Number of Trailers', type: 'number' },
             { key: 'materialPrice', label: 'Material Value (SAR)', type: 'number' },
             { key: 'insuranceRequired', label: 'Insurance Required?', type: 'checkbox' },
+            { key: 'insuranceValue', label: 'Material Value for Insurance (SAR)', type: 'number' },
             { key: 'entryPermit', label: 'Entry Permit Required?', type: 'checkbox' },
           ],
+        },
+        {
+          title: 'Driver & Vehicle Details',
+          fields: [
+            { key: 'driverName', label: 'Driver Name', type: 'text', placeholder: 'Full name' },
+            { key: 'driverNationality', label: 'Nationality', type: 'text' },
+            { key: 'driverIdNumber', label: 'ID/Iqama Number', type: 'text' },
+            { key: 'vehicleBrand', label: 'Vehicle Brand', type: 'text', placeholder: 'Toyota, Volvo...' },
+            { key: 'vehicleYear', label: 'Vehicle Year', type: 'number' },
+            { key: 'vehiclePlate', label: 'Plate Number', type: 'text', required: true },
+          ],
+        },
+        {
+          title: 'Logistics Details',
+          fields: [
+            {
+              key: 'googleMapsPickup',
+              label: 'Pickup Location (Maps URL)',
+              type: 'text',
+              placeholder: 'https://maps.google.com/...',
+            },
+            {
+              key: 'googleMapsDelivery',
+              label: 'Delivery Location (Maps URL)',
+              type: 'text',
+              placeholder: 'https://maps.google.com/...',
+            },
+            { key: 'cnNumber', label: 'CN Number', type: 'text', placeholder: 'Nesma CN#' },
+            { key: 'shiftStartTime', label: 'Shift Start Time', type: 'datetime-local' },
+          ],
+        },
+        {
+          title: 'Budget & Approval',
+          fields: [{ key: 'projectBudgetApproved', label: 'Project Budget Approved?', type: 'checkbox' }],
         },
       ];
     case 'Equipment':
@@ -509,6 +544,10 @@ export function getJoTypeSections(joType: string): FormSectionConfig[] {
             { key: 'withOperator', label: 'With Operator?', type: 'checkbox' },
           ],
         },
+        {
+          title: 'Budget & Approval',
+          fields: [{ key: 'projectBudgetApproved', label: 'Project Budget Approved?', type: 'checkbox' }],
+        },
       ];
     case 'Generator_Rental':
       return [
@@ -527,6 +566,10 @@ export function getJoTypeSections(joType: string): FormSectionConfig[] {
             { key: 'siteLocation', label: 'Installation Site', type: 'text', required: true },
             { key: 'fuelIncluded', label: 'Fuel Included?', type: 'checkbox' },
           ],
+        },
+        {
+          title: 'Budget & Approval',
+          fields: [{ key: 'projectBudgetApproved', label: 'Project Budget Approved?', type: 'checkbox' }],
         },
       ];
     case 'Generator_Maintenance':
@@ -552,6 +595,10 @@ export function getJoTypeSections(joType: string): FormSectionConfig[] {
             { key: 'issueDescription', label: 'Issue Description', type: 'textarea', required: true },
           ],
         },
+        {
+          title: 'Budget & Approval',
+          fields: [{ key: 'projectBudgetApproved', label: 'Project Budget Approved?', type: 'checkbox' }],
+        },
       ];
     case 'Scrap':
       return [
@@ -570,6 +617,10 @@ export function getJoTypeSections(joType: string): FormSectionConfig[] {
             { key: 'description', label: 'Description', type: 'textarea', required: true },
             { key: 'photos', label: 'Photos (min. 3)', type: 'file' },
           ],
+        },
+        {
+          title: 'Budget & Approval',
+          fields: [{ key: 'projectBudgetApproved', label: 'Project Budget Approved?', type: 'checkbox' }],
         },
       ];
     case 'Rental_Daily':
@@ -590,6 +641,10 @@ export function getJoTypeSections(joType: string): FormSectionConfig[] {
             { key: 'withOperator', label: 'With Operator?', type: 'checkbox' },
           ],
         },
+        {
+          title: 'Budget & Approval',
+          fields: [{ key: 'projectBudgetApproved', label: 'Project Budget Approved?', type: 'checkbox' }],
+        },
       ];
     case 'Rental_Monthly':
       return [
@@ -607,7 +662,12 @@ export function getJoTypeSections(joType: string): FormSectionConfig[] {
             { key: 'startDate', label: 'Start Date', type: 'date', required: true },
             { key: 'durationMonths', label: 'Duration (Months)', type: 'number', required: true },
             { key: 'withOperator', label: 'With Operator?', type: 'checkbox' },
+            { key: 'coaApprovalRequired', label: 'COO Approval Required', type: 'checkbox' },
           ],
+        },
+        {
+          title: 'Budget & Approval',
+          fields: [{ key: 'projectBudgetApproved', label: 'Project Budget Approved?', type: 'checkbox' }],
         },
       ];
     default:
